@@ -1081,12 +1081,64 @@ document.getElementById('clearSearchBtn').addEventListener('click', () => {
   document.getElementById('searchResultGrid').innerHTML = '';
 });
 
-// 開始比對：列出所有有照片的走失案件（來自靜態卡片 + Firestore）
-document.getElementById('doSearchBtn').addEventListener('click', () => {
+// ── 以圖搜狗：顏色相似度比對引擎 ──
+
+// 把圖片畫到離屏 canvas，取得 16x16 縮圖的平均色
+function getImageColorVector(imgEl) {
+  return new Promise(resolve => {
+    const SIZE = 16;
+    const c = document.createElement('canvas');
+    c.width = c.height = SIZE;
+    const ctx = c.getContext('2d');
+    // crossOrigin 已在載入時設定；若圖片已 loaded 直接用
+    const draw = () => {
+      try {
+        ctx.drawImage(imgEl, 0, 0, SIZE, SIZE);
+        const data = ctx.getImageData(0, 0, SIZE, SIZE).data;
+        // 每 4 bytes = RGBA，取每個 pixel 的 RGB 平均
+        const vec = [];
+        for (let i = 0; i < data.length; i += 4) {
+          vec.push(data[i], data[i+1], data[i+2]);
+        }
+        resolve(vec);
+      } catch(e) {
+        resolve(null); // CORS 失敗時跳過
+      }
+    };
+    if (imgEl.complete && imgEl.naturalWidth > 0) { draw(); }
+    else { imgEl.onload = draw; imgEl.onerror = () => resolve(null); }
+  });
+}
+
+// 計算兩個向量的餘弦相似度（0~1，越高越像）
+function cosineSim(a, b) {
+  if (!a || !b || a.length !== b.length) return 0;
+  let dot = 0, magA = 0, magB = 0;
+  for (let i = 0; i < a.length; i++) {
+    dot  += a[i] * b[i];
+    magA += a[i] * a[i];
+    magB += b[i] * b[i];
+  }
+  return magA && magB ? dot / (Math.sqrt(magA) * Math.sqrt(magB)) : 0;
+}
+
+// 把上傳圖片的 data URL 轉成 Image 元素取色向量
+function getUploadVector(dataURL) {
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = async () => { resolve(await getImageColorVector(img)); };
+    img.onerror = () => resolve(null);
+    img.src = dataURL;
+  });
+}
+
+// 開始比對
+document.getElementById('doSearchBtn').addEventListener('click', async () => {
   const resultArea = document.getElementById('searchResultArea');
   const resultGrid = document.getElementById('searchResultGrid');
   const noPhoto    = document.getElementById('searchNoPhoto');
   const countEl    = document.getElementById('searchResultCount');
+  const doBtn      = document.getElementById('doSearchBtn');
 
   // 靜態卡片資料（1–15 筆手寫 + 16–50 筆來自 extraDogs）
   const hand15 = [
@@ -1121,27 +1173,71 @@ document.getElementById('doSearchBtn').addEventListener('click', () => {
   });
 
   const allDogs = [...staticDogs, ...firestoreDogs];
-  resultGrid.innerHTML = '';
-
   if (allDogs.length === 0) {
     noPhoto.style.display = 'block';
     countEl.textContent = '';
-  } else {
-    noPhoto.style.display = 'none';
-    countEl.textContent = `共 ${allDogs.length} 筆`;
-    allDogs.forEach(dog => {
-      const card = document.createElement('div');
-      card.style.cssText = 'border:1px solid var(--hairline);overflow:hidden;';
-      card.innerHTML = `
-        <img src="${dog.img}" style="width:100%;aspect-ratio:1;object-fit:cover;display:block;" alt="${dog.name}">
-        <div style="padding:8px 10px;">
-          <div style="font-size:14px;font-weight:600;color:var(--ink);margin-bottom:2px;">${dog.name}</div>
-          <div style="font-size:12px;color:var(--ink-subtle);margin-bottom:4px;">${dog.breed}</div>
-          <div style="font-size:12px;color:var(--primary);">📞 ${dog.phone}</div>
-        </div>`;
-      resultGrid.appendChild(card);
-    });
+    resultArea.style.display = 'block';
+    return;
   }
+
+  // 取得上傳圖片的色向量
+  const uploadedSrc = document.getElementById('searchPreviewImg').src;
+  doBtn.textContent = '🔄 比對中…';
+  doBtn.disabled = true;
+
+  const uploadVec = await getUploadVector(uploadedSrc);
+
+  // 為每張資料庫圖片建立臨時 Image 物件取色向量
+  const scored = await Promise.all(allDogs.map(async (dog) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.src = dog.img;
+    const vec = await getImageColorVector(img);
+    const sim = cosineSim(uploadVec, vec);
+    return { ...dog, sim };
+  }));
+
+  // 按相似度排序（高→低）
+  scored.sort((a, b) => b.sim - a.sim);
+
+  doBtn.textContent = '✅ 比對完成';
+  doBtn.disabled = false;
+  setTimeout(() => { doBtn.textContent = '開始比對'; }, 2000);
+
+  resultGrid.innerHTML = '';
+  noPhoto.style.display = 'none';
+  countEl.textContent = `共比對 ${scored.length} 筆，依相似度排列`;
+
+  scored.forEach((dog, idx) => {
+    const pct = Math.round(dog.sim * 100);
+    const isTop = idx === 0;
+    const isSimilar = pct >= 85; // 截圖比對幾乎一模一樣時得分很高
+    const borderStyle = isTop
+      ? 'border:3px solid var(--primary);box-shadow:0 0 12px rgba(255,107,53,0.4);'
+      : isSimilar
+        ? 'border:2px solid var(--teal);'
+        : 'border:1px solid var(--hairline);';
+    const badge = isTop
+      ? `<div style="background:var(--primary);color:white;font-size:11px;font-weight:700;padding:3px 8px;border-radius:10px;display:inline-block;margin-bottom:4px;">🏆 最相似</div><br>`
+      : isSimilar
+        ? `<div style="background:var(--teal);color:white;font-size:11px;font-weight:700;padding:3px 8px;border-radius:10px;display:inline-block;margin-bottom:4px;">✅ 高度相似</div><br>`
+        : '';
+    const card = document.createElement('div');
+    card.style.cssText = `overflow:hidden;border-radius:8px;${borderStyle}`;
+    card.innerHTML = `
+      <div style="position:relative;">
+        <img src="${dog.img}" style="width:100%;aspect-ratio:1;object-fit:cover;display:block;" alt="${dog.name}">
+        <div style="position:absolute;top:6px;right:6px;background:rgba(0,0,0,0.65);color:white;font-size:11px;font-weight:700;padding:2px 7px;border-radius:10px;">${pct}%</div>
+      </div>
+      <div style="padding:8px 10px;">
+        ${badge}
+        <div style="font-size:14px;font-weight:700;color:var(--ink);margin-bottom:2px;">${dog.name}</div>
+        <div style="font-size:12px;color:var(--ink-subtle);margin-bottom:4px;">${dog.breed}</div>
+        <div style="font-size:12px;color:var(--primary);">📞 ${dog.phone}</div>
+      </div>`;
+    resultGrid.appendChild(card);
+  });
+
   resultArea.style.display = 'block';
 });
 
