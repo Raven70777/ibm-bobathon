@@ -541,7 +541,69 @@
 
 <div class="toast" id="successToast">✅ 協尋案件已成功刊登！感謝您的通報。</div>
 
-<script>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-app.js";
+import { getFirestore, collection, addDoc, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCEltVzf9L5qtu2GGreFl7soc0QReM4FW4",
+  authDomain: "lost-dog-07.firebaseapp.com",
+  projectId: "lost-dog-07",
+  storageBucket: "lost-dog-07.firebasestorage.app",
+  messagingSenderId: "522442139339",
+  appId: "1:522442139339:web:1559759116ae3d398e9d4e"
+};
+const app = initializeApp(firebaseConfig);
+const db  = getFirestore(app);
+
+const cityKeyMap = {
+  '台北市':'taipei','新北市':'newtaipei','桃園市':'taoyuan',
+  '台中市':'taichung','台南市':'tainan','高雄市':'kaohsiung',
+  '基隆市':'keelung','新竹市':'hsinchu','嘉義市':'chiayi','其他縣市':'other'
+};
+
+function renderCard(data) {
+  const card = document.createElement('div');
+  card.className = 'dog-card dynamic';
+  card.dataset.status = data.caseType || 'lost';
+  card.dataset.city   = cityKeyMap[data.city] || 'other';
+  card.dataset.size   = data.size || 'small';
+  const sc = data.caseType==='urgent' ? 'status-urgent' : data.caseType==='found' ? 'status-found' : 'status-lost';
+  const st = data.caseType==='urgent' ? '🚨 緊急協尋' : data.caseType==='found' ? '✅ 已拾獲' : '走失協尋';
+  const em = data.caseType==='urgent' ? '🚨' : data.caseType==='found' ? '🐶' : '🐾';
+  const chipTag = data.hasChip==='yes' ? '<span class="dog-tag chip">✓ 已植晶片</span>'
+                : data.hasChip==='no'  ? '<span class="dog-tag nochip">✗ 未植晶片</span>'
+                : '<span class="dog-tag">晶片不確定</span>';
+  const imgEl = data.photo
+    ? `<img src="${data.photo}" style="width:100%;aspect-ratio:4/3;object-fit:cover;border-bottom:1px solid var(--hairline);">`
+    : `<div class="dog-img-placeholder">${em}</div>`;
+  card.innerHTML = `
+    ${imgEl}
+    <div class="dog-status-bar ${sc}">${st} · 剛刊登</div>
+    <div class="dog-body">
+      <div class="dog-name">${data.name}</div>
+      <div class="dog-breed">${data.breed||'品種未填'}</div>
+      <div class="dog-meta">
+        <div class="dog-meta-row"><strong>地點</strong>${data.city}${data.addr?' '+data.addr:''}</div>
+        ${data.date?`<div class="dog-meta-row"><strong>時間</strong>${data.date}</div>`:''}
+        ${data.desc?`<div class="dog-meta-row"><strong>特徵</strong>${data.desc}</div>`:''}
+      </div>
+      <div class="dog-tags">${chipTag}</div>
+    </div>
+    <div class="dog-contact">📞 聯絡：${data.phone||'未填'}</div>`;
+  return card;
+}
+
+// 即時監聽 Firestore
+const q = query(collection(db,'dogs'), orderBy('createdAt','desc'));
+onSnapshot(q, snapshot => {
+  document.querySelectorAll('.dog-card.dynamic').forEach(c => c.remove());
+  const grid = document.getElementById('dogGrid');
+  const noRes = document.getElementById('noResults');
+  snapshot.docs.forEach(doc => grid.insertBefore(renderCard(doc.data()), noRes));
+  applyFilters();
+});
+
 // Modal
 const overlay = document.getElementById('modalOverlay');
 document.querySelectorAll('#openModalBtn, .open-modal').forEach(b => b.addEventListener('click', () => overlay.classList.add('open')));
@@ -549,9 +611,43 @@ document.getElementById('closeModalBtn').addEventListener('click', () => overlay
 document.getElementById('cancelBtn').addEventListener('click', () => overlay.classList.remove('open'));
 overlay.addEventListener('click', e => { if (e.target === overlay) overlay.classList.remove('open'); });
 
-// Submit
-document.getElementById('submitBtn').addEventListener('click', () => {
+// Submit → 存到 Firestore
+document.getElementById('submitBtn').addEventListener('click', async () => {
+  const name     = document.getElementById('dogName').value.trim() || '（未填名字）';
+  const breed    = document.getElementById('dogBreed').value.trim();
+  const desc     = document.getElementById('dogDesc').value.trim();
+  const city     = document.getElementById('lostCity').value || '地點未填';
+  const date     = document.getElementById('lostDate').value || '';
+  const addr     = document.getElementById('lostAddr').value.trim();
+  const phone    = document.getElementById('contactPhone').value.trim() || '未填';
+  const caseType = document.querySelector('input[name="caseType"]:checked').value;
+  const hasChip  = document.querySelector('input[name="hasChip"]:checked').value;
+  const size     = document.querySelector('input[name="size"]:checked').value;
+
+  async function save(photo) {
+    await addDoc(collection(db,'dogs'), {
+      name, breed, desc, city, date, addr, phone,
+      caseType, hasChip, size, photo: photo||null,
+      createdAt: Date.now()
+    });
+  }
+
+  const photoInput = document.getElementById('photoInput');
+  if (photoInput.files.length > 0) {
+    const reader = new FileReader();
+    reader.onload = async e => await save(e.target.result);
+    reader.readAsDataURL(photoInput.files[0]);
+  } else {
+    await save(null);
+  }
+
   overlay.classList.remove('open');
+  ['dogName','dogBreed','dogDesc','lostAddr','contactName','contactPhone'].forEach(id => document.getElementById(id).value='');
+  document.getElementById('lostCity').value='';
+  document.getElementById('lostDate').value='';
+  document.getElementById('photoPreview').innerHTML='';
+  document.getElementById('photoPreview').style.display='none';
+
   const t = document.getElementById('successToast');
   t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), 4000);
@@ -590,6 +686,18 @@ const statusKeys = new Set(['all','urgent','lost','found']);
 const cityKeys   = new Set(['taipei','newtaipei','taichung','kaohsiung','taoyuan']);
 const sizeKeys   = new Set(['small','medium','large']);
 
+function applyFilters() {
+  let visible = 0;
+  cards.forEach(c => {
+    const ok = (activeStatus === 'all' || c.dataset.status === activeStatus)
+            && (!activeCity  || c.dataset.city  === activeCity)
+            && (!activeSize  || c.dataset.size  === activeSize);
+    c.classList.toggle('hidden', !ok);
+    if (ok) visible++;
+  });
+  noResults.style.display = visible === 0 ? 'block' : 'none';
+}
+
 document.getElementById('filterBar').addEventListener('click', e => {
   const tag = e.target.closest('.filter-tag');
   if (!tag) return;
@@ -614,15 +722,7 @@ document.getElementById('filterBar').addEventListener('click', e => {
     if (activeSize) tag.classList.add('active');
   }
 
-  let visible = 0;
-  cards.forEach(c => {
-    const ok = (activeStatus === 'all' || c.dataset.status === activeStatus)
-            && (!activeCity  || c.dataset.city   === activeCity)
-            && (!activeSize  || c.dataset.size   === activeSize);
-    c.classList.toggle('hidden', !ok);
-    if (ok) visible++;
-  });
-  noResults.style.display = visible === 0 ? 'block' : 'none';
+  applyFilters();
 });
 </script>
 </body>
