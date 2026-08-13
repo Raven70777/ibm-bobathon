@@ -1081,80 +1081,40 @@ document.getElementById('clearSearchBtn').addEventListener('click', () => {
   document.getElementById('searchResultGrid').innerHTML = '';
 });
 
-// ── 以圖搜狗：Canvas 讀取上傳圖片色調 → 比對資料庫 ──
+// ── 以圖搜狗：fetch → blob → Canvas 讀取 RGB，完全繞開 CORS ──
 
-// 分析上傳圖（data URL）→ 取得平均 RGB
-function getUploadAvgColor(dataURL) {
-  return new Promise(resolve => {
-    const img = new Image();
-    img.onload = () => {
-      const SIZE = 32;
-      const c = document.createElement('canvas');
-      c.width = c.height = SIZE;
-      const ctx = c.getContext('2d');
-      ctx.drawImage(img, 0, 0, SIZE, SIZE);
-      const d = ctx.getImageData(0, 0, SIZE, SIZE).data;
-      let r = 0, g = 0, b = 0, n = d.length / 4;
-      for (let i = 0; i < d.length; i += 4) { r += d[i]; g += d[i+1]; b += d[i+2]; }
-      resolve({ r: r/n, g: g/n, b: b/n });
-    };
-    img.onerror = () => resolve(null);
-    img.src = dataURL;
-  });
+// 用 fetch 把圖片抓成 blob，再畫到 canvas 取平均 RGB（無 CORS 問題）
+async function getAvgRGB(src) {
+  try {
+    const resp = await fetch(src);
+    const blob = await resp.blob();
+    const blobURL = URL.createObjectURL(blob);
+    return await new Promise(resolve => {
+      const img = new Image();
+      img.onload = () => {
+        const SIZE = 16;
+        const c = document.createElement('canvas');
+        c.width = c.height = SIZE;
+        const ctx = c.getContext('2d');
+        ctx.drawImage(img, 0, 0, SIZE, SIZE);
+        const d = ctx.getImageData(0, 0, SIZE, SIZE).data;
+        let r = 0, g = 0, b = 0, n = d.length / 4;
+        for (let i = 0; i < d.length; i += 4) { r += d[i]; g += d[i+1]; b += d[i+2]; }
+        URL.revokeObjectURL(blobURL);
+        resolve([r/n, g/n, b/n]);
+      };
+      img.onerror = () => { URL.revokeObjectURL(blobURL); resolve(null); };
+      img.src = blobURL;
+    });
+  } catch { return null; }
 }
 
-// 依 RGB 判斷主色系（回傳標籤陣列）
-function detectColorTags({ r, g, b }) {
-  const tags = [];
-  const max = Math.max(r, g, b);
-  const min = Math.min(r, g, b);
-  const brightness = (r + g + b) / 3;
-  const saturation = max > 0 ? (max - min) / max : 0;
-
-  if (brightness > 210)                         tags.push('白');
-  else if (brightness < 55)                     tags.push('黑');
-  else if (saturation < 0.12)                   tags.push('灰');
-  else if (r > g + 40 && r > b + 40)            tags.push('橘', '棕', '紅');
-  else if (r > 160 && g > 120 && b < 80)        tags.push('橘', '棕', '黃');
-  else if (g > r && g > b)                      tags.push('黃', '棕');
-  else if (b > r + 20 && b > g + 20)            tags.push('黑', '灰');
-  else                                           tags.push('棕', '黃', '橘');
-  return tags;
-}
-
-// 每隻狗的顏色關鍵字（對應 desc + breed）
-const DOG_COLOR_HINTS = {
-  1:  ['杏','棕','橘'], 2:  ['黑','棕'],       3:  ['白'],
-  4:  ['橘','紅','棕'], 5:  ['白','米'],        6:  ['棕','黑','三色'],
-  7:  ['橘','白'],      8:  ['棕','白'],        9:  ['黑','棕'],
-  10: ['黑','白','灰'], 11: ['棕','黃'],        12: ['白'],
-  13: ['白','橘','棕'], 14: ['黑','白'],        15: ['金','黃','橘'],
-  16: ['黑','白'],      17: ['黑','白'],        18: ['白'],
-  19: ['棕','白'],      20: ['棕'],             21: ['金','棕'],
-  22: ['棕','虎'],      23: ['棕','紅'],        24: ['白'],
-  25: ['灰','白'],      26: ['棕','黑'],        27: ['白'],
-  28: ['棕'],           29: ['黑','白'],        30: ['橘','紅'],
-  31: ['白','奶油'],    32: ['白','黑'],        33: ['棕','金'],
-  34: ['金','黃'],      35: ['棕','黃'],        36: ['杏','棕'],
-  37: ['黑','白'],      38: ['白','黑'],        39: ['橘','白'],
-  40: ['黑','棕'],      41: ['白'],             42: ['黑','棕'],
-  43: ['白','棕'],      44: ['白'],             45: ['白','黑'],
-  46: ['棕','白'],      47: ['棕','白'],        48: ['橘','棕'],
-  49: ['棕'],           50: ['棕','紅'],
-};
-
-// 計算比對分數（上傳色標 vs 狗狗色標 交集）
-function calcColorScore(uploadTags, dogId) {
-  const hints = DOG_COLOR_HINTS[dogId] || [];
-  let score = 0;
-  for (const ut of uploadTags) {
-    for (const h of hints) {
-      if (h.includes(ut) || ut.includes(h)) score++;
-    }
-  }
-  // 歸一化到 0~1
-  const maxPossible = Math.max(uploadTags.length, hints.length, 1);
-  return score / maxPossible;
+// 計算歐氏距離（越小越像）→ 轉成相似度 0~1
+function rgbSim(a, b) {
+  if (!a || !b) return 0;
+  const dist = Math.sqrt((a[0]-b[0])**2 + (a[1]-b[1])**2 + (a[2]-b[2])**2);
+  const maxDist = Math.sqrt(3 * 255**2); // 最大可能距離
+  return 1 - dist / maxDist;
 }
 
 // 全部靜態 50 筆資料
@@ -1189,10 +1149,6 @@ document.getElementById('doSearchBtn').addEventListener('click', async () => {
   doBtn.textContent = '🔄 比對中…';
   doBtn.disabled = true;
 
-  // 分析上傳圖片的色調
-  const avgColor = await getUploadAvgColor(uploadedSrc);
-  const uploadTags = avgColor ? detectColorTags(avgColor) : [];
-
   // Firestore 動態案件
   const firestoreDogs = [];
   document.querySelectorAll('.dog-card.dynamic').forEach(card => {
@@ -1206,12 +1162,17 @@ document.getElementById('doSearchBtn').addEventListener('click', async () => {
 
   const allDogs = [...ALL_STATIC_DOGS, ...firestoreDogs];
 
-  // 比對每隻狗，給分
-  const scored = allDogs.map(dog => {
-    const sim = dog.id ? calcColorScore(uploadTags, dog.id) : 0.3;
-    // Firestore 上傳的案件（有真實照片）加一點基礎分
-    return { ...dog, sim };
-  });
+  // 用 fetch+blob 同時取得上傳圖和所有資料庫圖片的平均 RGB
+  const [uploadRGB, ...dbRGBs] = await Promise.all([
+    getAvgRGB(uploadedSrc),
+    ...allDogs.map(d => getAvgRGB(d.img))
+  ]);
+
+  // 計算每隻狗的相似度
+  const scored = allDogs.map((dog, i) => ({
+    ...dog,
+    sim: rgbSim(uploadRGB, dbRGBs[i])
+  }));
 
   // 排序、只取前 5
   scored.sort((a, b) => b.sim - a.sim);
@@ -1225,11 +1186,8 @@ document.getElementById('doSearchBtn').addEventListener('click', async () => {
   noPhoto.style.display = 'none';
   countEl.textContent = `🔍 從 ${allDogs.length} 筆中找出最相似的 ${top5.length} 筆`;
 
-  // 計算最高分作為基準，顯示相對百分比
-  const maxSim = top5[0]?.sim || 1;
-
   top5.forEach((dog, idx) => {
-    const pct = maxSim > 0 ? Math.round((dog.sim / maxSim) * 100) : 0;
+    const pct = Math.round(dog.sim * 100);
     const isTop = idx === 0;
     const borderStyle = isTop
       ? 'border:3px solid var(--primary);box-shadow:0 0 16px rgba(255,107,53,0.45);'
