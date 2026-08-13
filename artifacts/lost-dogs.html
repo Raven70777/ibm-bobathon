@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>尋狗網 — 幫助走失毛孩回家</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --primary: #0f62fe; --ink: #161616; --ink-muted: #525252; --ink-subtle: #8c8c8c;
+    --canvas: #ffffff; --surface-1: #f4f4f4; --hairline: #e0e0e0;
+    --inverse-canvas: #161616; --inverse-ink: #ffffff; --inverse-ink-muted: #c6c6c6;
+    --success: #24a148; --error: #da1e28;
+  }
+  body { font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 16px; font-weight: 400; line-height: 1.50; letter-spacing: 0.16px; color: var(--ink); background: var(--canvas); }
+
+  .utility-bar { background: var(--surface-1); color: var(--ink-muted); font-size: 12px; letter-spacing: 0.32px; height: 32px; display: flex; align-items: center; padding: 0 28px; border-bottom: 1px solid var(--hairline); }
+  .utility-bar .right { margin-left: auto; }
+  .top-nav { background: var(--canvas); border-bottom: 1px solid var(--hairline); height: 56px; display: flex; align-items: center; padding: 0 28px; gap: 28px; position: sticky; top: 0; z-index: 100; }
+  .logo { font-size: 20px; font-weight: 700; color: var(--ink); letter-spacing: -0.5px; }
+  .logo span { color: var(--primary); }
+  .logo sub { font-size: 11px; font-weight: 400; color: var(--ink-muted); vertical-align: baseline; margin-left: 4px; }
+  .nav-links { display: flex; gap: 20px; font-size: 14px; }
+  .nav-links a { color: var(--ink-muted); text-decoration: none; }
+  .nav-links a:hover { color: var(--primary); }
+  .nav-cta { margin-left: auto; background: var(--error); color: var(--inverse-ink); font-size: 14px; padding: 10px 18px; letter-spacing: 0.16px; cursor: pointer; border: none; font-family: inherit; }
+  .alert-banner { background: #fff1f1; border-bottom: 2px solid var(--error); padding: 10px 28px; display: flex; align-items: center; gap: 10px; font-size: 13px; }
+  .alert-dot { width: 9px; height: 9px; background: var(--error); border-radius: 50%; flex-shrink: 0; }
+  .alert-banner strong { color: var(--error); }
+
+  /* Hero */
+  .hero { padding: 64px 28px; border-bottom: 1px solid var(--hairline); display: grid; grid-template-columns: 1fr 1fr; gap: 56px; align-items: center; max-width: 1100px; margin: 0 auto; }
+  .eyebrow { font-size: 13px; color: var(--primary); letter-spacing: 0.16px; margin-bottom: 14px; }
+  .hero h1 { font-size: 48px; font-weight: 300; line-height: 1.15; letter-spacing: -0.4px; margin-bottom: 18px; }
+  .hero h1 em { font-style: normal; color: var(--primary); }
+  .hero p { font-size: 17px; line-height: 1.50; color: var(--ink-muted); margin-bottom: 28px; }
+  .hero-buttons { display: flex; gap: 1px; flex-wrap: wrap; }
+  .btn-primary { background: var(--primary); color: var(--inverse-ink); font-size: 14px; padding: 13px 22px; text-decoration: none; letter-spacing: 0.16px; cursor: pointer; border: none; font-family: inherit; }
+  .btn-dark { background: var(--inverse-canvas); color: var(--inverse-ink); font-size: 14px; padding: 13px 22px; text-decoration: none; letter-spacing: 0.16px; cursor: pointer; border: none; font-family: inherit; }
+  .hero-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--hairline); border: 1px solid var(--hairline); }
+  .stat-box { background: var(--canvas); padding: 24px; }
+  .stat-box.alt { background: var(--surface-1); }
+  .stat-num { font-size: 44px; font-weight: 300; color: var(--primary); line-height: 1; margin-bottom: 6px; }
+  .stat-num.green { color: var(--success); }
+  .stat-label { font-size: 13px; color: var(--ink-muted); }
+
+  /* Main */
+  .main-section { max-width: 1100px; margin: 0 auto; padding: 0 28px; }
+  .section-header { padding: 48px 0 24px; }
+  .section-header h2 { font-size: 30px; font-weight: 400; line-height: 1.25; }
+  .section-header p { font-size: 15px; color: var(--ink-muted); margin-top: 6px; }
+
+  /* Filter */
+  .filter-bar { background: var(--surface-1); border: 1px solid var(--hairline); padding: 14px 18px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 24px; }
+  .filter-label { font-size: 13px; color: var(--ink-muted); margin-right: 2px; }
+  .filter-tag { font-size: 12px; padding: 6px 14px; border: 1px solid var(--hairline); background: var(--canvas); color: var(--ink-muted); letter-spacing: 0.16px; cursor: pointer; user-select: none; }
+  .filter-tag:hover { border-color: var(--primary); color: var(--primary); }
+  .filter-tag.active { background: var(--primary); color: var(--inverse-ink); border-color: var(--primary); }
+  .filter-tag.urgent-tag { border-color: var(--error); color: var(--error); }
+  .filter-tag.urgent-tag.active { background: var(--error); color: var(--inverse-ink); border-color: var(--error); }
+  .filter-divider { width: 1px; height: 20px; background: var(--hairline); margin: 0 4px; }
+
+  /* Dog grid */
+  .dog-grid { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--hairline); margin-bottom: 56px; }
+  .dog-card { border-right: 1px solid var(--hairline); border-bottom: 1px solid var(--hairline); }
+  .dog-card:nth-child(3n) { border-right: none; }
+  .dog-card.hidden { display: none; }
+  .dog-img-placeholder { width: 100%; aspect-ratio: 4/3; background: var(--surface-1); display: flex; align-items: center; justify-content: center; font-size: 52px; border-bottom: 1px solid var(--hairline); }
+  .dog-status-bar { padding: 7px 14px; font-size: 11px; letter-spacing: 0.32px; font-weight: 600; }
+  .status-lost { background: #fff1f1; color: var(--error); }
+  .status-found { background: #defbe6; color: var(--success); }
+  .status-urgent { background: var(--error); color: var(--inverse-ink); }
+  .dog-body { padding: 14px; }
+  .dog-name { font-size: 20px; font-weight: 400; margin-bottom: 3px; }
+  .dog-breed { font-size: 12px; color: var(--ink-subtle); letter-spacing: 0.32px; margin-bottom: 10px; }
+  .dog-meta { display: flex; flex-direction: column; gap: 3px; margin-bottom: 12px; }
+  .dog-meta-row { font-size: 13px; color: var(--ink-muted); display: flex; gap: 8px; }
+  .dog-meta-row strong { color: var(--ink); font-weight: 600; min-width: 44px; }
+  .dog-tags { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 12px; }
+  .dog-tag { font-size: 11px; padding: 3px 9px; border: 1px solid var(--hairline); color: var(--ink-muted); }
+  .dog-tag.chip { border-color: var(--primary); color: var(--primary); }
+  .dog-tag.nochip { border-color: var(--error); color: var(--error); }
+  .dog-contact { padding: 11px 14px; border-top: 1px solid var(--hairline); background: var(--surface-1); font-size: 13px; color: var(--primary); }
+  .no-results { display: none; grid-column: 1/-1; padding: 48px; text-align: center; color: var(--ink-muted); font-size: 15px; }
+
+  /* Band */
+  .band { background: var(--surface-1); border-top: 1px solid var(--hairline); border-bottom: 1px solid var(--hairline); }
+  .band-inner { padding: 56px 28px; max-width: 1100px; margin: 0 auto; }
+  .band-eyebrow { font-size: 13px; color: var(--ink-subtle); margin-bottom: 8px; }
+  .band-title { font-size: 30px; font-weight: 400; line-height: 1.25; color: var(--ink); }
+  .steps-grid { display: grid; grid-template-columns: repeat(4, 1fr); border: 1px solid var(--hairline); margin-top: 28px; background: var(--canvas); }
+  .step { padding: 24px; border-right: 1px solid var(--hairline); }
+  .step:last-child { border-right: none; }
+  .step-num { font-size: 38px; font-weight: 300; color: var(--primary); margin-bottom: 12px; }
+  .step h3 { font-size: 15px; font-weight: 600; color: var(--ink); margin-bottom: 7px; }
+  .step p { font-size: 13px; color: var(--ink-muted); line-height: 1.5; }
+
+  /* Tips */
+  .tips-grid { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid var(--hairline); margin-bottom: 56px; }
+  .tip-item { padding: 22px; border-right: 1px solid var(--hairline); border-bottom: 1px solid var(--hairline); }
+  .tip-item:nth-child(2n) { border-right: none; }
+  .tip-item:nth-last-child(-n+2) { border-bottom: none; }
+  .tip-item:last-child { border-right: none; }
+  .tip-icon { font-size: 26px; margin-bottom: 9px; }
+  .tip-item h4 { font-size: 15px; font-weight: 600; color: var(--ink); margin-bottom: 5px; }
+  .tip-item p { font-size: 13px; color: var(--ink-muted); line-height: 1.5; }
+
+  /* CTA */
+  .cta-banner { background: var(--primary); color: var(--inverse-ink); padding: 56px 28px; }
+  .cta-inner { max-width: 1100px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 28px; flex-wrap: wrap; }
+  .cta-banner h2 { font-size: 30px; font-weight: 300; line-height: 1.25; }
+  .cta-banner p { font-size: 15px; opacity: 0.85; margin-top: 8px; }
+  .cta-buttons { display: flex; flex-shrink: 0; }
+  .btn-white { background: var(--inverse-ink); color: var(--primary); font-size: 14px; padding: 13px 22px; font-weight: 600; cursor: pointer; border: none; font-family: inherit; }
+  .btn-outline-white { background: transparent; color: var(--inverse-ink); font-size: 14px; padding: 13px 22px; text-decoration: none; border: 1px solid rgba(255,255,255,0.4); margin-left: 1px; cursor: pointer; }
+
+  /* Footer */
+  footer { background: var(--inverse-canvas); color: var(--inverse-ink-muted); padding: 40px 28px 28px; font-size: 13px; border-top: 1px solid #393939; }
+  .footer-inner { max-width: 1100px; margin: 0 auto; display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 40px; margin-bottom: 32px; }
+  .footer-brand .logo { font-size: 18px; font-weight: 700; color: var(--inverse-ink); margin-bottom: 10px; }
+  .footer-brand .logo span { color: var(--primary); }
+  .footer-brand p { font-size: 13px; color: var(--inverse-ink-muted); line-height: 1.5; }
+  .footer-col h5 { font-size: 13px; font-weight: 600; color: var(--inverse-ink); margin-bottom: 10px; }
+  .footer-col a { display: block; font-size: 13px; color: var(--inverse-ink-muted); text-decoration: none; margin-bottom: 5px; }
+  .footer-bottom { max-width: 1100px; margin: 0 auto; padding-top: 20px; border-top: 1px solid #393939; display: flex; justify-content: space-between; font-size: 12px; color: #525252; }
+
+  /* Modal */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(22,22,22,0.72); z-index: 200; align-items: flex-start; justify-content: center; padding: 40px 16px; overflow-y: auto; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: var(--canvas); width: 100%; max-width: 600px; border: 1px solid var(--hairline); position: relative; }
+  .modal-header { background: var(--inverse-canvas); color: var(--inverse-ink); padding: 20px 24px; display: flex; align-items: center; justify-content: space-between; }
+  .modal-header h2 { font-size: 20px; font-weight: 400; }
+  .modal-close { background: none; border: none; color: var(--inverse-ink); font-size: 22px; cursor: pointer; line-height: 1; padding: 0 4px; }
+  .modal-body { padding: 28px 24px; }
+  .form-row { margin-bottom: 20px; }
+  .form-row.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .form-label { display: block; font-size: 13px; font-weight: 600; color: var(--ink); letter-spacing: 0.16px; margin-bottom: 6px; }
+  .form-label .req { color: var(--error); margin-left: 2px; }
+  .form-input, .form-select, .form-textarea { width: 100%; background: var(--surface-1); border: none; border-bottom: 1px solid var(--ink-muted); padding: 11px 16px; font-size: 14px; color: var(--ink); font-family: inherit; letter-spacing: 0.16px; outline: none; appearance: none; }
+  .form-input:focus, .form-select:focus, .form-textarea:focus { border-bottom: 2px solid var(--primary); }
+  .form-textarea { resize: vertical; min-height: 80px; }
+  .chip-group { display: flex; }
+  .chip-opt { flex: 1; }
+  .chip-opt input[type="radio"] { position: absolute; opacity: 0; width: 0; height: 0; }
+  .chip-opt label { display: block; text-align: center; padding: 11px 0; font-size: 14px; background: var(--surface-1); color: var(--ink-muted); border: 1px solid var(--hairline); border-right: none; cursor: pointer; }
+  .chip-opt:last-child label { border-right: 1px solid var(--hairline); }
+  .chip-opt input[type="radio"]:checked + label { background: var(--primary); color: var(--inverse-ink); border-color: var(--primary); }
+  .form-section-title { font-size: 13px; font-weight: 600; color: var(--primary); letter-spacing: 0.32px; text-transform: uppercase; padding: 16px 0 8px; border-bottom: 1px solid var(--hairline); margin-bottom: 20px; }
+  .form-helper { font-size: 12px; color: var(--ink-subtle); letter-spacing: 0.32px; margin-top: 5px; }
+  .chip-num-row { display: flex; }
+  .chip-num-input { flex: 1; background: var(--surface-1); border: none; border-bottom: 1px solid var(--ink-muted); padding: 11px 16px; font-size: 14px; color: var(--ink); font-family: inherit; letter-spacing: 0.32px; outline: none; }
+  .chip-num-input:focus { border-bottom: 2px solid var(--primary); }
+  .chip-num-input:disabled { color: var(--ink-subtle); border-bottom-color: var(--hairline); cursor: not-allowed; }
+  .chip-num-suffix { background: var(--surface-1); border-bottom: 1px solid var(--ink-muted); padding: 11px 14px; font-size: 12px; color: var(--ink-subtle); white-space: nowrap; }
+  .photo-box { border: 1px dashed var(--ink-muted); background: var(--surface-1); padding: 32px 24px; text-align: center; cursor: pointer; position: relative; }
+  .photo-box:hover { border-color: var(--primary); }
+  .photo-box input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+  .photo-box-icon { font-size: 32px; margin-bottom: 8px; }
+  .photo-box-text { font-size: 14px; color: var(--ink-muted); }
+  .photo-box-text strong { color: var(--primary); }
+  .photo-box-hint { font-size: 12px; color: var(--ink-subtle); margin-top: 4px; }
+  .photo-preview { display: none; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  .photo-preview img { width: 80px; height: 80px; object-fit: cover; border: 1px solid var(--hairline); }
+  .modal-footer { padding: 16px 24px 24px; display: flex; justify-content: flex-end; gap: 8px; border-top: 1px solid var(--hairline); }
+  .btn-cancel { background: var(--surface-1); border: 1px solid var(--hairline); color: var(--ink); font-size: 14px; padding: 11px 20px; cursor: pointer; font-family: inherit; }
+  .btn-submit { background: var(--primary); color: var(--inverse-ink); border: none; font-size: 14px; padding: 11px 24px; cursor: pointer; font-family: inherit; letter-spacing: 0.16px; }
+
+  /* Toast */
+  .toast { display: none; position: fixed; bottom: 32px; right: 32px; background: var(--success); color: var(--inverse-ink); padding: 14px 24px; font-size: 14px; z-index: 300; border-left: 4px solid #1a7a38; }
+  .toast.show { display: block; }
+</style>
+</head>
+<body>
+
+<div class="utility-bar">
+  <span>全台灣毛孩協尋平台 · 免費刊登 · 24小時不間斷</span>
+  <span class="right">緊急聯絡：0800-毛-回家（0800-635-425）</span>
+</div>
+
+<nav class="top-nav">
+  <div class="logo">尋<span>狗</span>網<sub>台灣走失寵物協尋</sub></div>
+  <div class="nav-links">
+    <a href="#">走失協尋</a>
+    <a href="#">拾獲通報</a>
+    <a href="#">成功案例</a>
+    <a href="#">教戰守則</a>
+  </div>
+  <button class="nav-cta" id="openModalBtn">+ 立即刊登協尋</button>
+</nav>
+
+<div class="alert-banner">
+  <div class="alert-dot"></div>
+  <span><strong>緊急協尋</strong>：台北市大安區今日新增 3 件走失通報，近大安森林公園附近，請附近民眾多加留意。</span>
+</div>
+
+<section style="border-bottom:1px solid var(--hairline);">
+  <div class="hero">
+    <div class="hero-text">
+      <div class="eyebrow">台灣最大走失寵物協尋平台</div>
+      <h1>讓每一隻<br><em>走失的狗狗</em><br>都能回家</h1>
+      <p>刊登協尋、通報拾獲、分享擴散——我們用科技與社群的力量，縮短毛孩與家人分離的時間。</p>
+      <div class="hero-buttons">
+        <button class="btn-primary open-modal">刊登走失協尋</button>
+        <button class="btn-dark">我拾獲了一隻狗</button>
+      </div>
+    </div>
+    <div class="hero-stats">
+      <div class="stat-box"><div class="stat-num">2,847</div><div class="stat-label">累計協尋案件</div></div>
+      <div class="stat-box alt"><div class="stat-num green">1,923</div><div class="stat-label">成功回家 🎉</div></div>
+      <div class="stat-box alt"><div class="stat-num">67<span style="font-size:26px">%</span></div><div class="stat-label">協尋成功率</div></div>
+      <div class="stat-box"><div class="stat-num">143</div><div class="stat-label">本月活躍案件</div></div>
+    </div>
+  </div>
+</section>
+
+<div class="main-section">
+  <div class="section-header">
+    <div class="eyebrow">最新協尋案件</div>
+    <h2>牠們還在等待回家</h2>
+    <p>如有看見以下毛孩，請立即聯繫飼主或撥打協尋專線</p>
+  </div>
+
+  <div class="filter-bar" id="filterBar">
+    <span class="filter-label">狀態：</span>
+    <span class="filter-tag active" data-filter="all">全部</span>
+    <span class="filter-tag urgent-tag" data-filter="urgent">🚨 緊急</span>
+    <span class="filter-tag" data-filter="lost">走失中</span>
+    <span class="filter-tag" data-filter="found">已拾獲</span>
+    <div class="filter-divider"></div>
+    <span class="filter-label">城市：</span>
+    <span class="filter-tag" data-filter="taipei">台北市</span>
+    <span class="filter-tag" data-filter="newtaipei">新北市</span>
+    <span class="filter-tag" data-filter="taichung">台中市</span>
+    <span class="filter-tag" data-filter="kaohsiung">高雄市</span>
+    <span class="filter-tag" data-filter="taoyuan">桃園市</span>
+    <div class="filter-divider"></div>
+    <span class="filter-label">體型：</span>
+    <span class="filter-tag" data-filter="small">小型犬</span>
+    <span class="filter-tag" data-filter="medium">中型犬</span>
+    <span class="filter-tag" data-filter="large">大型犬</span>
+  </div>
+
+  <div class="dog-grid" id="dogGrid">
+    <div class="dog-card" data-status="urgent" data-city="taipei" data-size="small">
+      <div class="dog-img-placeholder">🐩</div>
+      <div class="dog-status-bar status-urgent">🚨 緊急協尋 · 失蹤第 2 天</div>
+      <div class="dog-body">
+        <div class="dog-name">豆豆</div>
+        <div class="dog-breed">貴賓犬（Toy Poodle）· 2 歲 · 母</div>
+        <div class="dog-meta">
+          <div class="dog-meta-row"><strong>地點</strong>台北市大安區和平東路附近</div>
+          <div class="dog-meta-row"><strong>時間</strong>2025/07/14 下午 3 點</div>
+          <div class="dog-meta-row"><strong>特徵</strong>杏色毛髮，紅色項圈</div>
+        </div>
+        <div class="dog-tags"><span class="dog-tag chip">✓ 已植晶片</span><span class="dog-tag">有項圈</span><span class="dog-tag">已絕育</span></div>
+      </div>
+      <div class="dog-contact">📞 聯絡飼主：0912-345-678</div>
+    </div>
+
+    <div class="dog-card" data-status="lost" data-city="newtaipei" data-size="large">
+      <div class="dog-img-placeholder">🐕</div>
+      <div class="dog-status-bar status-lost">走失協尋 · 失蹤第 5 天</div>
+      <div class="dog-body">
+        <div class="dog-name">黑糖</div>
+        <div class="dog-breed">拉布拉多 · 4 歲 · 公</div>
+        <div class="dog-meta">
+          <div class="dog-meta-row"><strong>地點</strong>新北市板橋區文化路公園</div>
+          <div class="dog-meta-row"><strong>時間</strong>2025/07/11 早上 7 點</div>
+          <div class="dog-meta-row"><strong>特徵</strong>黑色短毛，體型較大，溫馴</div>
+        </div>
+        <div class="dog-tags"><span class="dog-tag chip">✓ 已植晶片</span><span class="dog-tag">大型犬</span><span class="dog-tag">溫馴</span></div>
+      </div>
+      <div class="dog-contact">📞 聯絡飼主：0933-567-890</div>
+    </div>
+
+    <div class="dog-card" data-status="found" data-city="taichung" data-size="small">
+      <div class="dog-img-placeholder">🐶</div>
+      <div class="dog-status-bar status-found">✅ 已拾獲 · 等待認領</div>
+      <div class="dog-body">
+        <div class="dog-name">（待認領）白色小狗</div>
+        <div class="dog-breed">疑似馬爾濟斯 · 約 1–2 歲</div>
+        <div class="dog-meta">
+          <div class="dog-meta-row"><strong>地點</strong>台中市西區美村路一段</div>
+          <div class="dog-meta-row"><strong>時間</strong>2025/07/15 傍晚拾獲</div>
+          <div class="dog-meta-row"><strong>特徵</strong>全白毛色，無項圈，狀態良好</div>
+        </div>
+        <div class="dog-tags"><span class="dog-tag">已拾獲</span><span class="dog-tag">暫養中</span><span class="dog-tag nochip">✗ 未植晶片</span></div>
+      </div>
+      <div class="dog-contact">📞 拾獲者：0956-789-012</div>
+    </div>
+
+    <div class="dog-card" data-status="lost" data-city="kaohsiung" data-size="medium">
+      <div class="dog-img-placeholder">🦮</div>
+      <div class="dog-status-bar status-lost">走失協尋 · 失蹤第 8 天</div>
+      <div class="dog-body">
+        <div class="dog-name">阿福</div>
+        <div class="dog-breed">柴犬 · 3 歲 · 公</div>
+        <div class="dog-meta">
+          <div class="dog-meta-row"><strong>地點</strong>高雄市苓雅區中正一路</div>
+          <div class="dog-meta-row"><strong>時間</strong>2025/07/08 颱風夜受驚逃跑</div>
+          <div class="dog-meta-row"><strong>特徵</strong>橘紅色毛，捲尾，左耳有傷</div>
+        </div>
+        <div class="dog-tags"><span class="dog-tag chip">✓ 已植晶片</span><span class="dog-tag">橘紅色</span><span class="dog-tag">捲尾</span></div>
+      </div>
+      <div class="dog-contact">📞 聯絡飼主：0977-234-567</div>
+    </div>
+
+    <div class="dog-card" data-status="urgent" data-city="taipei" data-size="small">
+      <div class="dog-img-placeholder">🐾</div>
+      <div class="dog-status-bar status-urgent">🚨 緊急協尋 · 失蹤第 1 天</div>
+      <div class="dog-body">
+        <div class="dog-name">奶茶</div>
+        <div class="dog-breed">博美犬 · 5 歲 · 女</div>
+        <div class="dog-meta">
+          <div class="dog-meta-row"><strong>地點</strong>台北市信義區基隆路附近</div>
+          <div class="dog-meta-row"><strong>時間</strong>2025/07/15 中午 12 點</div>
+          <div class="dog-meta-row"><strong>特徵</strong>米白色球球毛，粉紅項圈，怕生</div>
+        </div>
+        <div class="dog-tags"><span class="dog-tag chip">✓ 已植晶片</span><span class="dog-tag">粉紅項圈</span><span class="dog-tag">怕生謹慎</span></div>
+      </div>
+      <div class="dog-contact">📞 聯絡飼主：0911-111-222</div>
+    </div>
+
+    <div class="dog-card" data-status="lost" data-city="taoyuan" data-size="medium">
+      <div class="dog-img-placeholder">🐕‍🦺</div>
+      <div class="dog-status-bar status-lost">走失協尋 · 失蹤第 12 天</div>
+      <div class="dog-body">
+        <div class="dog-name">花生</div>
+        <div class="dog-breed">米格魯 · 6 歲 · 公</div>
+        <div class="dog-meta">
+          <div class="dog-meta-row"><strong>地點</strong>桃園市中壢區中央路</div>
+          <div class="dog-meta-row"><strong>時間</strong>2025/07/04 清晨</div>
+          <div class="dog-meta-row"><strong>特徵</strong>三色（黑白棕），大耳朵，叫聲洪亮</div>
+        </div>
+        <div class="dog-tags"><span class="dog-tag chip">✓ 已植晶片</span><span class="dog-tag">三色毛</span><span class="dog-tag">叫聲洪亮</span></div>
+      </div>
+      <div class="dog-contact">📞 聯絡飼主：0988-456-789</div>
+    </div>
+
+    <div class="no-results" id="noResults">目前沒有符合條件的案件 🐾</div>
+  </div>
+</div>
+
+<div class="band">
+  <div class="band-inner">
+    <div class="band-eyebrow">使用流程</div>
+    <div class="band-title">四步驟找回毛孩</div>
+    <div class="steps-grid">
+      <div class="step"><div class="step-num">01</div><h3>立即刊登</h3><p>填寫走失地點、時間、外觀描述，上傳照片，系統自動推送到附近用戶。</p></div>
+      <div class="step"><div class="step-num">02</div><h3>社群擴散</h3><p>一鍵分享到 LINE、Facebook，自動產出協尋圖卡，讓更多人看見。</p></div>
+      <div class="step"><div class="step-num">03</div><h3>接收線索</h3><p>有人目擊或拾獲時直接聯繫，系統整合所有線索，不遺漏任何訊息。</p></div>
+      <div class="step"><div class="step-num">04</div><h3>安全接回</h3><p>確認身份後安排接回，並更新案件狀態，讓大家知道毛孩回家了！</p></div>
+    </div>
+  </div>
+</div>
+
+<div class="main-section">
+  <div class="section-header">
+    <div class="eyebrow">協尋教戰守則</div>
+    <h2>黃金 72 小時這樣做</h2>
+  </div>
+  <div class="tips-grid">
+    <div class="tip-item"><div class="tip-icon">📍</div><h4>原地守候優先</h4><p>走失地點留下有氣味的物品，狗狗通常會循氣味回到原地。避免大範圍追趕以免跑更遠。</p></div>
+    <div class="tip-item"><div class="tip-icon">🏥</div><h4>通知附近動物醫院</h4><p>通知方圓 3 公里內所有獸醫院和動物收容所，若有人帶入即可立即比對晶片。</p></div>
+    <div class="tip-item"><div class="tip-icon">🌙</div><h4>清晨黃昏最容易找到</h4><p>清晨 5–7 點和傍晚 5–7 點是活動高峰，這兩個時段搜尋成功率高出白天 3 倍。</p></div>
+    <div class="tip-item"><div class="tip-icon">📋</div><h4>張貼實體告示</h4><p>在走失地點方圓 500 公尺內張貼協尋告示，加上「找到有謝禮」效果更好。</p></div>
+    <div class="tip-item"><div class="tip-icon">🎤</div><h4>呼叫名字要冷靜</h4><p>緊張聲音可能讓受驚嚇的狗更害怕。用平靜語調呼叫，或播放熟悉的音樂吸引靠近。</p></div>
+    <div class="tip-item"><div class="tip-icon">🌐</div><h4>善用網路社群</h4><p>加入當地寵物走失 Facebook 社團和 LINE 群組，請里長幫忙廣播。鄰里力量超乎預期。</p></div>
+  </div>
+</div>
+
+<section class="cta-banner">
+  <div class="cta-inner">
+    <div>
+      <h2>你的一次分享<br>可能就是牠回家的關鍵</h2>
+      <p>每個案件都是一個家庭的焦急等待，花 30 秒分享給你的朋友吧。</p>
+    </div>
+    <div class="cta-buttons">
+      <button class="btn-white open-modal">刊登協尋案件</button>
+      <a class="btn-outline-white" href="#">瀏覽所有案件</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="footer-inner">
+    <div class="footer-brand">
+      <div class="logo">尋<span>狗</span>網</div>
+      <p>台灣最大走失寵物協尋平台，致力於讓每一隻走失的毛孩都能回到家人身邊。</p>
+    </div>
+    <div class="footer-col">
+      <h5>協尋服務</h5>
+      <a href="#">刊登走失通報</a><a href="#">拾獲通報</a><a href="#">搜尋案件</a><a href="#">成功案例</a>
+    </div>
+    <div class="footer-col">
+      <h5>協尋資源</h5>
+      <a href="#">教戰守則</a><a href="#">晶片查詢</a><a href="#">附近收容所</a><a href="#">動物醫院地圖</a>
+    </div>
+    <div class="footer-col">
+      <h5>關於我們</h5>
+      <a href="#">平台介紹</a><a href="#">志工加入</a><a href="#">聯絡我們</a><a href="#">隱私政策</a>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <span>© 2025 尋狗網 · 台灣走失寵物協尋平台 · 緊急專線 0800-635-425</span>
+    <span>Made with IBM Bob</span>
+  </div>
+</footer>
+
+<!-- ── MODAL ── -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>🐾 刊登走失協尋</h2>
+      <button class="modal-close" id="closeModalBtn">✕</button>
+    </div>
+    <div class="modal-body">
+
+      <div class="form-row">
+        <label class="form-label">案件類型<span class="req">*</span></label>
+        <div class="chip-group">
+          <div class="chip-opt"><input type="radio" name="caseType" id="typeLost" value="lost" checked><label for="typeLost">🔴 走失協尋</label></div>
+          <div class="chip-opt"><input type="radio" name="caseType" id="typeFound" value="found"><label for="typeFound">🟢 我拾獲了一隻狗</label></div>
+          <div class="chip-opt"><input type="radio" name="caseType" id="typeUrgent" value="urgent"><label for="typeUrgent">🚨 緊急協尋</label></div>
+        </div>
+      </div>
+
+      <div class="form-section-title">狗狗基本資料</div>
+
+      <div class="form-row two-col">
+        <div>
+          <label class="form-label" for="dogName">狗狗名字<span class="req">*</span></label>
+          <input class="form-input" id="dogName" type="text" placeholder="例：豆豆">
+        </div>
+        <div>
+          <label class="form-label" for="dogBreed">品種</label>
+          <input class="form-input" id="dogBreed" type="text" placeholder="例：貴賓犬、米克斯">
+        </div>
+      </div>
+
+      <div class="form-row two-col">
+        <div>
+          <label class="form-label">性別</label>
+          <div class="chip-group">
+            <div class="chip-opt"><input type="radio" name="gender" id="gM" value="male" checked><label for="gM">公</label></div>
+            <div class="chip-opt"><input type="radio" name="gender" id="gF" value="female"><label for="gF">母</label></div>
+            <div class="chip-opt"><input type="radio" name="gender" id="gU" value="unknown"><label for="gU">不確定</label></div>
+          </div>
+        </div>
+        <div>
+          <label class="form-label">體型</label>
+          <div class="chip-group">
+            <div class="chip-opt"><input type="radio" name="size" id="sS" value="small" checked><label for="sS">小型</label></div>
+            <div class="chip-opt"><input type="radio" name="size" id="sM" value="medium"><label for="sM">中型</label></div>
+            <div class="chip-opt"><input type="radio" name="size" id="sL" value="large"><label for="sL">大型</label></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <label class="form-label" for="dogDesc">外觀特徵描述<span class="req">*</span></label>
+        <textarea class="form-textarea" id="dogDesc" placeholder="毛色、項圈顏色、特殊標記，越詳細越好…"></textarea>
+      </div>
+
+      <!-- 照片上傳 -->
+      <div class="form-row">
+        <label class="form-label">上傳狗狗照片</label>
+        <div class="photo-box">
+          <input type="file" id="photoInput" accept="image/*" multiple>
+          <div class="photo-box-icon">📷</div>
+          <div class="photo-box-text">點擊或拖曳上傳照片 · <strong>選擇檔案</strong></div>
+          <div class="photo-box-hint">支援 JPG、PNG，最多 5 張，每張不超過 5MB</div>
+        </div>
+        <div class="photo-preview" id="photoPreview"></div>
+      </div>
+
+      <div class="form-section-title">晶片資訊</div>
+
+      <div class="form-row">
+        <label class="form-label">是否已植入晶片<span class="req">*</span></label>
+        <div class="chip-group">
+          <div class="chip-opt"><input type="radio" name="hasChip" id="chipYes" value="yes" checked><label for="chipYes">✓ 已植晶片</label></div>
+          <div class="chip-opt"><input type="radio" name="hasChip" id="chipNo" value="no"><label for="chipNo">✗ 未植晶片</label></div>
+          <div class="chip-opt"><input type="radio" name="hasChip" id="chipUnk" value="unknown"><label for="chipUnk">不確定</label></div>
+        </div>
+        <div class="form-helper">植有晶片的寵物在動物醫院可被快速辨識，大幅提升找回機率。</div>
+      </div>
+
+      <div class="form-row" id="chipNumRow">
+        <label class="form-label" for="chipNumber">晶片號碼</label>
+        <div class="chip-num-row">
+          <input class="chip-num-input" id="chipNumber" type="text" placeholder="15 位數字，例：900123456789012" maxlength="20">
+          <span class="chip-num-suffix">ISO 11784</span>
+        </div>
+        <div class="form-helper">晶片號碼可在動物醫院或寵物護照查詢。</div>
+      </div>
+
+      <div class="form-section-title">走失資訊</div>
+
+      <div class="form-row two-col">
+        <div>
+          <label class="form-label" for="lostCity">走失城市<span class="req">*</span></label>
+          <select class="form-select" id="lostCity">
+            <option value="">請選擇</option>
+            <option>台北市</option><option>新北市</option><option>桃園市</option>
+            <option>台中市</option><option>台南市</option><option>高雄市</option>
+            <option>基隆市</option><option>新竹市</option><option>嘉義市</option><option>其他縣市</option>
+          </select>
+        </div>
+        <div>
+          <label class="form-label" for="lostDate">走失日期<span class="req">*</span></label>
+          <input class="form-input" id="lostDate" type="date">
+        </div>
+      </div>
+
+      <div class="form-row">
+        <label class="form-label" for="lostAddr">詳細走失地點<span class="req">*</span></label>
+        <input class="form-input" id="lostAddr" type="text" placeholder="例：大安區和平東路二段與復興南路口附近">
+      </div>
+
+      <div class="form-section-title">聯絡資訊</div>
+
+      <div class="form-row two-col">
+        <div>
+          <label class="form-label" for="contactName">聯絡人姓名<span class="req">*</span></label>
+          <input class="form-input" id="contactName" type="text" placeholder="您的姓名">
+        </div>
+        <div>
+          <label class="form-label" for="contactPhone">聯絡電話<span class="req">*</span></label>
+          <input class="form-input" id="contactPhone" type="tel" placeholder="09XX-XXX-XXX">
+        </div>
+      </div>
+
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" id="cancelBtn">取消</button>
+      <button class="btn-submit" id="submitBtn">送出協尋刊登</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="successToast">✅ 協尋案件已成功刊登！感謝您的通報。</div>
+
+<script>
+// Modal
+const overlay = document.getElementById('modalOverlay');
+document.querySelectorAll('#openModalBtn, .open-modal').forEach(b => b.addEventListener('click', () => overlay.classList.add('open')));
+document.getElementById('closeModalBtn').addEventListener('click', () => overlay.classList.remove('open'));
+document.getElementById('cancelBtn').addEventListener('click', () => overlay.classList.remove('open'));
+overlay.addEventListener('click', e => { if (e.target === overlay) overlay.classList.remove('open'); });
+
+// Submit
+document.getElementById('submitBtn').addEventListener('click', () => {
+  overlay.classList.remove('open');
+  const t = document.getElementById('successToast');
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 4000);
+});
+
+// Chip number toggle
+document.querySelectorAll('input[name="hasChip"]').forEach(r => {
+  r.addEventListener('change', () => {
+    const row = document.getElementById('chipNumRow');
+    const inp = document.getElementById('chipNumber');
+    if (r.checked && r.value === 'yes') { row.style.display = 'block'; inp.disabled = false; }
+    else if (r.checked) { inp.value = ''; inp.disabled = true; }
+  });
+});
+
+// Photo preview
+document.getElementById('photoInput').addEventListener('change', function() {
+  const p = document.getElementById('photoPreview');
+  p.innerHTML = '';
+  const files = Array.from(this.files).slice(0, 5);
+  if (files.length) {
+    p.style.display = 'flex';
+    files.forEach(f => {
+      const r = new FileReader();
+      r.onload = e => { const img = document.createElement('img'); img.src = e.target.result; p.appendChild(img); };
+      r.readAsDataURL(f);
+    });
+  } else { p.style.display = 'none'; }
+});
+
+// Filter
+const cards = Array.from(document.querySelectorAll('.dog-card'));
+const noResults = document.getElementById('noResults');
+let activeStatus = 'all', activeCity = null, activeSize = null;
+const statusKeys = new Set(['all','urgent','lost','found']);
+const cityKeys   = new Set(['taipei','newtaipei','taichung','kaohsiung','taoyuan']);
+const sizeKeys   = new Set(['small','medium','large']);
+
+document.getElementById('filterBar').addEventListener('click', e => {
+  const tag = e.target.closest('.filter-tag');
+  if (!tag) return;
+  const f = tag.dataset.filter;
+  if (!f) return;
+
+  if (f === 'all') {
+    activeStatus = 'all'; activeCity = null; activeSize = null;
+    document.querySelectorAll('.filter-tag').forEach(t => t.classList.remove('active'));
+    tag.classList.add('active');
+  } else if (statusKeys.has(f)) {
+    activeStatus = (activeStatus === f) ? 'all' : f;
+    document.querySelectorAll('.filter-tag').forEach(t => { if (statusKeys.has(t.dataset.filter)) t.classList.remove('active'); });
+    if (activeStatus !== 'all') tag.classList.add('active');
+  } else if (cityKeys.has(f)) {
+    activeCity = (activeCity === f) ? null : f;
+    document.querySelectorAll('.filter-tag').forEach(t => { if (cityKeys.has(t.dataset.filter)) t.classList.remove('active'); });
+    if (activeCity) tag.classList.add('active');
+  } else if (sizeKeys.has(f)) {
+    activeSize = (activeSize === f) ? null : f;
+    document.querySelectorAll('.filter-tag').forEach(t => { if (sizeKeys.has(t.dataset.filter)) t.classList.remove('active'); });
+    if (activeSize) tag.classList.add('active');
+  }
+
+  let visible = 0;
+  cards.forEach(c => {
+    const ok = (activeStatus === 'all' || c.dataset.status === activeStatus)
+            && (!activeCity  || c.dataset.city   === activeCity)
+            && (!activeSize  || c.dataset.size   === activeSize);
+    c.classList.toggle('hidden', !ok);
+    if (ok) visible++;
+  });
+  noResults.style.display = visible === 0 ? 'block' : 'none';
+});
+</script>
+</body>
+</html>
