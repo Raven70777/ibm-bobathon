@@ -237,9 +237,26 @@
     <span class="filter-label">城市：</span>
     <span class="filter-tag" data-filter="taipei">台北市</span>
     <span class="filter-tag" data-filter="newtaipei">新北市</span>
-    <span class="filter-tag" data-filter="taichung">台中市</span>
-    <span class="filter-tag" data-filter="kaohsiung">高雄市</span>
     <span class="filter-tag" data-filter="taoyuan">桃園市</span>
+    <span class="filter-tag" data-filter="taichung">台中市</span>
+    <span class="filter-tag" data-filter="tainan">台南市</span>
+    <span class="filter-tag" data-filter="kaohsiung">高雄市</span>
+    <span class="filter-tag" data-filter="keelung">基隆市</span>
+    <span class="filter-tag" data-filter="hsinchu">新竹市</span>
+    <span class="filter-tag" data-filter="hsinchucounty">新竹縣</span>
+    <span class="filter-tag" data-filter="miaoli">苗栗縣</span>
+    <span class="filter-tag" data-filter="changhua">彰化縣</span>
+    <span class="filter-tag" data-filter="nantou">南投縣</span>
+    <span class="filter-tag" data-filter="yunlin">雲林縣</span>
+    <span class="filter-tag" data-filter="chiayi">嘉義市</span>
+    <span class="filter-tag" data-filter="chiayicounty">嘉義縣</span>
+    <span class="filter-tag" data-filter="pingtung">屏東縣</span>
+    <span class="filter-tag" data-filter="yilan">宜蘭縣</span>
+    <span class="filter-tag" data-filter="hualien">花蓮縣</span>
+    <span class="filter-tag" data-filter="taitung">台東縣</span>
+    <span class="filter-tag" data-filter="penghu">澎湖縣</span>
+    <span class="filter-tag" data-filter="kinmen">金門縣</span>
+    <span class="filter-tag" data-filter="matsu">連江縣</span>
     <div class="filter-divider"></div>
     <span class="filter-label">體型：</span>
     <span class="filter-tag" data-filter="small">小型犬</span>
@@ -249,7 +266,7 @@
 
   <div class="dog-grid" id="dogGrid">
     <div class="dog-card" data-status="urgent" data-city="taipei" data-size="small">
-      <img class="dog-img-real" src="https://images.dog.ceo/breeds/poodle-toy/n02113624_9033.jpg" alt="豆豆" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+      <img class="dog-img-real" src="https://placedog.net/400/300?id=1" alt="豆豆" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
       <div class="dog-img-placeholder" style="display:none;">🐩</div>
       <div class="dog-status-bar status-urgent">🚨 緊急協尋 · 失蹤第 2 天</div>
       <div class="dog-body">
@@ -266,7 +283,7 @@
     </div>
 
     <div class="dog-card" data-status="lost" data-city="newtaipei" data-size="large">
-      <img class="dog-img-real" src="https://images.dog.ceo/breeds/labrador/n02099712_7392.jpg" alt="黑糖" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+      <img class="dog-img-real" src="https://placedog.net/400/300?id=2" alt="黑糖" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
       <div class="dog-img-placeholder" style="display:none;">🐕</div>
       <div class="dog-status-bar status-lost">走失協尋 · 失蹤第 5 天</div>
       <div class="dog-body">
@@ -496,7 +513,7 @@
 
     <!-- 第 15 -->
     <div class="dog-card" data-status="lost" data-city="kaohsiung" data-size="large">
-      <img class="dog-img-real" src="https://images.dog.ceo/breeds/golden/n02099601_3004.jpg" alt="黃金" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+      <img class="dog-img-real" src="https://placedog.net/400/300?id=15" alt="黃金" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
       <div class="dog-img-placeholder" style="display:none;">🐕</div>
       <div class="dog-status-bar status-lost">走失協尋 · 失蹤第 7 天</div>
       <div class="dog-body">
@@ -876,21 +893,21 @@ document.getElementById('doSearchBtn').addEventListener('click', () => {
 
   // 靜態卡片資料
   const staticDogs = [
-    { name:'豆豆', breed:'貴賓犬（Toy Poodle）', phone:'0912-345-678', img:'https://images.dog.ceo/breeds/poodle-toy/n02113624_9033.jpg' },
-    { name:'黑糖', breed:'拉布拉多', phone:'0933-567-890', img:'https://images.dog.ceo/breeds/labrador/n02099712_7392.jpg' },
-    { name:'白色小狗', breed:'疑似馬爾濟斯', phone:'0956-789-012', img:'https://images.dog.ceo/breeds/maltese/n02085936_9605.jpg' },
-    { name:'阿福', breed:'柴犬', phone:'0977-234-567', img:'https://images.dog.ceo/breeds/shiba/shiba-14.jpg' },
-    { name:'奶茶', breed:'博美犬', phone:'0911-111-222', img:'https://images.dog.ceo/breeds/pomeranian/n02112018_5786.jpg' },
-    { name:'花生', breed:'米格魯', phone:'0988-456-789', img:'https://images.dog.ceo/breeds/beagle/n02088364_13936.jpg' },
-    { name:'橘子', breed:'柯基犬', phone:'0921-654-321', img:'https://images.dog.ceo/breeds/corgi-cardigan/n02113186_10501.jpg' },
-    { name:'小米', breed:'吉娃娃', phone:'0956-112-233', img:'https://images.dog.ceo/breeds/chihuahua/n02085620_7613.jpg' },
-    { name:'大黑（待認領）', breed:'德國牧羊犬混種', phone:'0978-888-999', img:'https://images.dog.ceo/breeds/germanshepherd/n02106662_18212.jpg' },
-    { name:'雪球', breed:'哈士奇', phone:'0922-333-444', img:'https://images.dog.ceo/breeds/husky/n02110185_10047.jpg' },
-    { name:'臘腸', breed:'臘腸犬', phone:'0966-777-888', img:'https://images.dog.ceo/breeds/dachshund/dachshund-4.jpg' },
-    { name:'白雪', breed:'薩摩耶', phone:'0900-123-456', img:'https://images.dog.ceo/breeds/samoyed/n02111889_5003.jpg' },
-    { name:'將軍', breed:'秋田犬', phone:'0955-999-000', img:'https://images.dog.ceo/breeds/akita/An_Akita_Inu_resting.jpg' },
-    { name:'長毛小狗（待認領）', breed:'疑似西施犬', phone:'0933-246-810', img:'https://images.dog.ceo/breeds/shihtzu/n02086240_4439.jpg' },
-    { name:'黃金', breed:'黃金獵犬', phone:'0944-567-890', img:'https://images.dog.ceo/breeds/golden/n02099601_3004.jpg' },
+    { name:'豆豆', breed:'貴賓犬（Toy Poodle）', phone:'0912-345-678', img:'https://placedog.net/400/300?id=1' },
+    { name:'黑糖', breed:'拉布拉多', phone:'0933-567-890', img:'https://placedog.net/400/300?id=2' },
+    { name:'白色小狗', breed:'疑似馬爾濟斯', phone:'0956-789-012', img:'https://placedog.net/400/300?id=3' },
+    { name:'阿福', breed:'柴犬', phone:'0977-234-567', img:'https://placedog.net/400/300?id=4' },
+    { name:'奶茶', breed:'博美犬', phone:'0911-111-222', img:'https://placedog.net/400/300?id=5' },
+    { name:'花生', breed:'米格魯', phone:'0988-456-789', img:'https://placedog.net/400/300?id=6' },
+    { name:'橘子', breed:'柯基犬', phone:'0921-654-321', img:'https://placedog.net/400/300?id=7' },
+    { name:'小米', breed:'吉娃娃', phone:'0956-112-233', img:'https://placedog.net/400/300?id=8' },
+    { name:'大黑（待認領）', breed:'德國牧羊犬混種', phone:'0978-888-999', img:'https://placedog.net/400/300?id=9' },
+    { name:'雪球', breed:'哈士奇', phone:'0922-333-444', img:'https://placedog.net/400/300?id=10' },
+    { name:'臘腸', breed:'臘腸犬', phone:'0966-777-888', img:'https://placedog.net/400/300?id=11' },
+    { name:'白雪', breed:'薩摩耶', phone:'0900-123-456', img:'https://placedog.net/400/300?id=12' },
+    { name:'將軍', breed:'秋田犬', phone:'0955-999-000', img:'https://placedog.net/400/300?id=13' },
+    { name:'長毛小狗（待認領）', breed:'疑似西施犬', phone:'0933-246-810', img:'https://placedog.net/400/300?id=14' },
+    { name:'黃金', breed:'黃金獵犬', phone:'0944-567-890', img:'https://placedog.net/400/300?id=15' },
   ];
 
   // Firestore 動態案件（有 photo 的）
@@ -1001,7 +1018,7 @@ const cards = Array.from(document.querySelectorAll('.dog-card'));
 const noResults = document.getElementById('noResults');
 let activeStatus = 'all', activeCity = null, activeSize = null;
 const statusKeys = new Set(['all','urgent','lost','found']);
-const cityKeys   = new Set(['taipei','newtaipei','taichung','kaohsiung','taoyuan']);
+const cityKeys   = new Set(['taipei','newtaipei','taoyuan','taichung','tainan','kaohsiung','keelung','hsinchu','hsinchucounty','miaoli','changhua','nantou','yunlin','chiayi','chiayicounty','pingtung','yilan','hualien','taitung','penghu','kinmen','matsu']);
 const sizeKeys   = new Set(['small','medium','large']);
 
 function applyFilters() {
