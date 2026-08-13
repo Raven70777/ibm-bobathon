@@ -953,6 +953,87 @@ function renderCard(data) {
   return card;
 }
 
+// ── 靜態擴充資料（第 16–50 隻）用 JS 渲染 ──
+const extraDogs = [
+  { id:16, name:'小黑',     breed:'台灣土狗 · 3 歲 · 公',   status:'lost',   city:'taipei',        size:'medium', days:5,  addr:'台北市萬華區艋舺大道',    time:'2025/07/11 早上',   desc:'全黑短毛，白色胸斑，溫馴', chip:'yes', tags:['白胸斑','親人'],   phone:'0912-001-001' },
+  { id:17, name:'米亞',     breed:'邊境牧羊犬 · 2 歲 · 母',  status:'urgent', city:'newtaipei',     size:'medium', days:1,  addr:'新北市淡水區中正路',      time:'2025/07/15 下午',   desc:'黑白花色，藍眼睛，非常聰明', chip:'yes', tags:['藍眼睛','黑白花'],  phone:'0933-002-002' },
+  { id:18, name:'球球',     breed:'比熊犬 · 4 歲 · 母',      status:'lost',   city:'taichung',      size:'small',  days:3,  addr:'台中市東區練武路',        time:'2025/07/13 晚上',   desc:'純白蓬鬆，頭上有粉色蝴蝶結', chip:'yes', tags:['純白蓬鬆','蝴蝶結'], phone:'0956-003-003' },
+  { id:19, name:'阿吉',     breed:'德國短毛指示犬 · 5 歲 · 公', status:'lost', city:'kaohsiung',   size:'large',  days:10, addr:'高雄市三民區十全一路',     time:'2025/07/06 清晨',   desc:'棕白花紋，善獵，體型大',   chip:'yes', tags:['棕白花紋','大型'],  phone:'0977-004-004' },
+  { id:20, name:'可可',     breed:'可卡犬 · 3 歲 · 母',      status:'found',  city:'tainan',        size:'medium', days:0,  addr:'台南市中西區健康路',      time:'2025/07/14 下午拾獲', desc:'棕色長耳，無項圈，狀態好', chip:'no',  tags:['長耳朵','已拾獲'],  phone:'0966-005-005' },
+  { id:21, name:'奇奇',     breed:'約克夏 · 6 歲 · 公',      status:'urgent', city:'taipei',        size:'small',  days:1,  addr:'台北市內湖區文湖街',      time:'2025/07/15 中午',   desc:'金棕色絲毛，頭上蝴蝶結，怕生', chip:'yes', tags:['絲毛','怕生'],     phone:'0911-006-006' },
+  { id:22, name:'福福',     breed:'英國鬥牛犬 · 4 歲 · 公',  status:'lost',   city:'taoyuan',       size:'large',  days:7,  addr:'桃園市八德區介壽路',      time:'2025/07/09 傍晚',   desc:'虎斑紋，大臉，體型壯碩，有紅牽繩', chip:'yes', tags:['虎斑','大臉'],    phone:'0922-007-007' },
+  { id:23, name:'毛毛',     breed:'松獅犬 · 5 歲 · 公',      status:'lost',   city:'newtaipei',     size:'large',  days:4,  addr:'新北市永和區中正路',      time:'2025/07/12 早上',   desc:'紅棕色厚毛，藍紫色舌頭，怕陌生人', chip:'yes', tags:['厚毛','藍舌頭'],  phone:'0944-008-008' },
+  { id:24, name:'小白',     breed:'西高地白梗 · 3 歲 · 母',  status:'found',  city:'hsinchu',       size:'small',  days:0,  addr:'新竹市東區光復路拾獲',    time:'2025/07/15 傍晚拾獲', desc:'全白短硬毛，無項圈，活潑', chip:'no',  tags:['全白','活潑'],     phone:'0955-009-009' },
+  { id:25, name:'寶貝',     breed:'迷你雪納瑞 · 4 歲 · 母',  status:'lost',   city:'taipei',        size:'small',  days:6,  addr:'台北市士林區天母東路',    time:'2025/07/10 下午',   desc:'鹽胡椒色，長眉毛，黃色項圈', chip:'yes', tags:['長眉毛','鹽胡椒'],  phone:'0900-010-010' },
+  { id:26, name:'阿虎',     breed:'米克斯 · 2 歲 · 公',      status:'urgent', city:'kaohsiung',     size:'medium', days:1,  addr:'高雄市楠梓區加昌路',      time:'2025/07/15 早上',   desc:'棕黑虎斑，短毛，左腿略跛', chip:'no',  tags:['虎斑','短毛'],     phone:'0933-011-011' },
+  { id:27, name:'妹妹',     breed:'日本狐狸犬 · 7 歲 · 母',  status:'lost',   city:'tainan',        size:'small',  days:8,  addr:'台南市安平區安北路',      time:'2025/07/08 晚上',   desc:'純白厚毛，尖耳，老犬需藥', chip:'yes', tags:['純白尖耳','老犬需藥'], phone:'0921-012-012' },
+  { id:28, name:'咖啡',     breed:'拉薩犬 · 5 歲 · 公',      status:'lost',   city:'taichung',      size:'small',  days:9,  addr:'台中市西屯區福科路',      time:'2025/07/07 上午',   desc:'棕色長毛蓋臉，白色項圈', chip:'yes', tags:['長毛蓋臉','棕色'],   phone:'0956-013-013' },
+  { id:29, name:'小肥',     breed:'法國鬥牛犬 · 3 歲 · 公',  status:'found',  city:'taipei',        size:'medium', days:0,  addr:'台北市大同區民族西路拾獲', time:'2025/07/13 清晨拾獲', desc:'黑白花，大耳，肥肥短腿', chip:'yes', tags:['大耳','短腿'],     phone:'0977-014-014' },
+  { id:30, name:'橙橙',     breed:'柴犬 · 2 歲 · 母',        status:'lost',   city:'newtaipei',     size:'medium', days:3,  addr:'新北市中和區中山路',      time:'2025/07/13 下午',   desc:'橘紅色，捲尾，眼神銳利', chip:'yes', tags:['橘紅','捲尾'],     phone:'0966-015-015' },
+  { id:31, name:'毛茸茸',   breed:'波美拉尼亞 · 4 歲 · 母',  status:'urgent', city:'taoyuan',       size:'small',  days:1,  addr:'桃園市中壢區環北路',      time:'2025/07/15 下午',   desc:'奶油色球球毛，非常怕生，受驚易咬人', chip:'yes', tags:['奶油色','怕生'],   phone:'0944-016-016' },
+  { id:32, name:'黑鼻子',   breed:'大麥町 · 3 歲 · 公',      status:'lost',   city:'kaohsiung',     size:'large',  days:5,  addr:'高雄市左營區博愛路',      time:'2025/07/11 傍晚',   desc:'白底黑斑，鼻子特黑，跑速快', chip:'yes', tags:['黑白斑','跑速快'],  phone:'0911-017-017' },
+  { id:33, name:'胖虎',     breed:'北京犬 · 6 歲 · 公',      status:'lost',   city:'taipei',        size:'small',  days:11, addr:'台北市文山區政大四維路',  time:'2025/07/05 早上',   desc:'金棕色平臉，眼睛大，走路搖晃', chip:'yes', tags:['平臉','大眼'],     phone:'0922-018-018' },
+  { id:34, name:'芒果',     breed:'黃金混種 · 1 歲 · 母',    status:'found',  city:'tainan',        size:'large',  days:0,  addr:'台南市東區裕農路拾獲',    time:'2025/07/12 傍晚拾獲', desc:'金黃色，幼犬，活潑好動', chip:'no',  tags:['幼犬','金黃色'],   phone:'0933-019-019' },
+  { id:35, name:'阿財',     breed:'土狗混種 · 4 歲 · 公',    status:'lost',   city:'hualien',       size:'medium', days:6,  addr:'花蓮縣花蓮市中正路',      time:'2025/07/10 清晨',   desc:'黃棕色短毛，尾巴卷起，親人', chip:'no',  tags:['黃棕色','親人'],   phone:'0956-020-020' },
+  { id:36, name:'露露',     breed:'迷你貴賓 · 5 歲 · 母',    status:'lost',   city:'taipei',        size:'small',  days:2,  addr:'台北市中正區羅斯福路',    time:'2025/07/14 傍晚',   desc:'杏色捲毛，紫色項圈，愛撒嬌', chip:'yes', tags:['杏色捲毛','紫項圈'], phone:'0900-021-021' },
+  { id:37, name:'大頭',     breed:'英國古代牧羊犬 · 3 歲 · 公', status:'lost', city:'newtaipei',   size:'large',  days:4,  addr:'新北市新莊區中正路',      time:'2025/07/12 午後',   desc:'黑白長毛，大蓬頭，行動慢', chip:'yes', tags:['蓬頭','長毛'],     phone:'0921-022-022' },
+  { id:38, name:'美美',     breed:'蝴蝶犬 · 4 歲 · 母',      status:'found',  city:'taichung',      size:'small',  days:0,  addr:'台中市北屯區昌平路拾獲',  time:'2025/07/11 清晨拾獲', desc:'白底黑斑，大耳如蝴蝶，嬌小', chip:'yes', tags:['蝴蝶耳','嬌小'],   phone:'0944-023-023' },
+  { id:39, name:'小龍',     breed:'威爾斯柯基 · 2 歲 · 公',  status:'urgent', city:'taipei',        size:'small',  days:1,  addr:'台北市北投區中央北路',    time:'2025/07/15 上午',   desc:'橘白色，圓屁屁，尾巴特短，活潑', chip:'yes', tags:['短尾','圓屁屁'],   phone:'0955-024-024' },
+  { id:40, name:'布丁',     breed:'迷你杜賓 · 5 歲 · 公',    status:'lost',   city:'kaohsiung',     size:'small',  days:7,  addr:'高雄市苓雅區四維三路',    time:'2025/07/09 晚上',   desc:'黑棕色，高挑纖細，四眼圖案', chip:'yes', tags:['四眼斑','纖細'],   phone:'0966-025-025' },
+  { id:41, name:'貝貝',     breed:'馬爾濟斯 · 8 歲 · 母',    status:'lost',   city:'tainan',        size:'small',  days:13, addr:'台南市北區北門路',        time:'2025/07/03 下午',   desc:'純白，老犬，耳聾，需長期服藥', chip:'yes', tags:['老犬','耳聾'],     phone:'0911-026-026' },
+  { id:42, name:'壯壯',     breed:'羅威納 · 4 歲 · 公',      status:'lost',   city:'taoyuan',       size:'large',  days:5,  addr:'桃園市蘆竹區南崁路',      time:'2025/07/11 早上',   desc:'黑棕色，體型壯，通常溫馴', chip:'yes', tags:['黑棕色','壯碩'],   phone:'0922-027-027' },
+  { id:43, name:'小花',     breed:'台灣土狗 · 1 歲 · 母',    status:'found',  city:'pingtung',      size:'medium', days:0,  addr:'屏東縣屏東市中山路拾獲',  time:'2025/07/14 晚上拾獲', desc:'白底棕斑，幼犬，非常活潑', chip:'no',  tags:['幼犬','白棕斑'],   phone:'0933-028-028' },
+  { id:44, name:'麻糬',     breed:'秋田混種 · 3 歲 · 公',    status:'lost',   city:'newtaipei',     size:'large',  days:8,  addr:'新北市汐止區大同路',      time:'2025/07/08 颱風後失聯', desc:'米白色，體型大，個性溫和', chip:'yes', tags:['米白','溫和'],     phone:'0956-029-029' },
+  { id:45, name:'點點',     breed:'達爾馬提亞 · 2 歲 · 母',  status:'lost',   city:'taichung',      size:'large',  days:3,  addr:'台中市大里區中興路',      time:'2025/07/13 傍晚',   desc:'白底黑點，跑速快，喜歡追球', chip:'yes', tags:['黑白點','跑速快'],  phone:'0977-030-030' },
+  { id:46, name:'魯夫',     breed:'聖伯納 · 2 歲 · 公',      status:'lost',   city:'taipei',        size:'large',  days:2,  addr:'台北市南港區研究院路',    time:'2025/07/14 上午',   desc:'棕白色超大型，頸部有水桶項圈', chip:'yes', tags:['超大型','水桶項圈'], phone:'0900-031-031' },
+  { id:47, name:'妮妮',     breed:'巴吉度獵犬 · 5 歲 · 母',  status:'found',  city:'kaohsiung',     size:'medium', days:0,  addr:'高雄市岡山區岡山路拾獲',  time:'2025/07/13 早上拾獲', desc:'棕白，超長耳，走路緩慢', chip:'yes', tags:['超長耳','走路慢'],  phone:'0944-032-032' },
+  { id:48, name:'乖乖',     breed:'博美混種 · 6 歲 · 母',    status:'lost',   city:'tainan',        size:'small',  days:9,  addr:'台南市仁德區中正路',      time:'2025/07/07 傍晚',   desc:'橘棕色蓬毛，愛叫，怕雷聲', chip:'yes', tags:['橘棕','愛叫'],     phone:'0921-033-033' },
+  { id:49, name:'熊熊',     breed:'鬆獅混種 · 4 歲 · 公',    status:'urgent', city:'newtaipei',     size:'large',  days:1,  addr:'新北市土城區中央路',      time:'2025/07/15 清晨',   desc:'深棕色厚毛，臉型扁，有輕微攻擊性', chip:'no',  tags:['厚毛','扁臉'],     phone:'0955-034-034' },
+  { id:50, name:'甜甜',     breed:'迷你貴賓 · 2 歲 · 母',    status:'lost',   city:'taipei',        size:'small',  days:4,  addr:'台北市中山區吉林路',      time:'2025/07/12 晚上',   desc:'紅棕色捲毛，超愛撒嬌，見人就搖尾', chip:'yes', tags:['紅棕捲毛','超親人'], phone:'0966-035-035' },
+];
+
+function makeStatusBar(status, days) {
+  if (status === 'urgent') return `<div class="dog-status-bar status-urgent">🚨 緊急協尋 · 失蹤第 ${days} 天</div>`;
+  if (status === 'found')  return `<div class="dog-status-bar status-found">✅ 已拾獲 · 等待認領</div>`;
+  return `<div class="dog-status-bar status-lost">走失協尋 · 失蹤第 ${days} 天</div>`;
+}
+
+function renderStaticCard(d) {
+  const chipTag = d.chip === 'yes' ? '<span class="dog-tag chip">✓ 已植晶片</span>'
+                : d.chip === 'no'  ? '<span class="dog-tag nochip">✗ 未植晶片</span>'
+                : '';
+  const extraTags = d.tags.map(t => `<span class="dog-tag">${t}</span>`).join('');
+  const contactLabel = d.status === 'found' ? '拾獲者' : '聯絡飼主';
+  const card = document.createElement('div');
+  card.className = 'dog-card';
+  card.dataset.status = d.status;
+  card.dataset.city   = d.city;
+  card.dataset.size   = d.size;
+  card.innerHTML = `
+    <img class="dog-img-real" src="https://placedog.net/400/300?id=${d.id}" alt="${d.name}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+    <div class="dog-img-placeholder" style="display:none;">🐾</div>
+    ${makeStatusBar(d.status, d.days)}
+    <div class="dog-body">
+      <div class="dog-name">${d.name}</div>
+      <div class="dog-breed">${d.breed}</div>
+      <div class="dog-meta">
+        <div class="dog-meta-row"><strong>地點</strong>${d.addr}</div>
+        <div class="dog-meta-row"><strong>時間</strong>${d.time}</div>
+        <div class="dog-meta-row"><strong>特徵</strong>${d.desc}</div>
+      </div>
+      <div class="dog-tags">${chipTag}${extraTags}</div>
+    </div>
+    <div class="dog-contact">📞 ${contactLabel}：${d.phone}</div>`;
+  return card;
+}
+
+// 插入靜態擴充卡片（第 16–50）到 noResults 之前
+(function insertExtraCards() {
+  const grid  = document.getElementById('dogGrid');
+  const noRes = document.getElementById('noResults');
+  extraDogs.forEach(d => grid.insertBefore(renderStaticCard(d), noRes));
+})();
+
 // 即時監聽 Firestore
 const q = query(collection(db,'dogs'), orderBy('createdAt','desc'));
 onSnapshot(q, snapshot => {
@@ -1007,8 +1088,8 @@ document.getElementById('doSearchBtn').addEventListener('click', () => {
   const noPhoto    = document.getElementById('searchNoPhoto');
   const countEl    = document.getElementById('searchResultCount');
 
-  // 靜態卡片資料
-  const staticDogs = [
+  // 靜態卡片資料（1–15 筆手寫 + 16–50 筆來自 extraDogs）
+  const hand15 = [
     { name:'豆豆', breed:'貴賓犬（Toy Poodle）', phone:'0912-345-678', img:'https://placedog.net/400/300?id=1' },
     { name:'黑糖', breed:'拉布拉多', phone:'0933-567-890', img:'https://placedog.net/400/300?id=2' },
     { name:'白色小狗', breed:'疑似馬爾濟斯', phone:'0956-789-012', img:'https://placedog.net/400/300?id=3' },
@@ -1025,6 +1106,8 @@ document.getElementById('doSearchBtn').addEventListener('click', () => {
     { name:'長毛小狗（待認領）', breed:'疑似西施犬', phone:'0933-246-810', img:'https://placedog.net/400/300?id=14' },
     { name:'黃金', breed:'黃金獵犬', phone:'0944-567-890', img:'https://placedog.net/400/300?id=15' },
   ];
+  const extra50 = extraDogs.map(d => ({ name: d.name, breed: d.breed, phone: d.phone, img: `https://placedog.net/400/300?id=${d.id}` }));
+  const staticDogs = [...hand15, ...extra50];
 
   // Firestore 動態案件（有 photo 的）
   const firestoreDogs = [];
@@ -1129,8 +1212,7 @@ document.getElementById('photoInput').addEventListener('change', function() {
   } else { p.style.display = 'none'; }
 });
 
-// Filter
-const cards = Array.from(document.querySelectorAll('.dog-card'));
+// Filter — 動態抓所有卡片（含 JS 渲染的第 16–50）
 const noResults = document.getElementById('noResults');
 let activeStatus = 'all', activeCity = null, activeSize = null;
 const statusKeys = new Set(['all','urgent','lost','found']);
@@ -1138,6 +1220,7 @@ const cityKeys   = new Set(['taipei','newtaipei','taoyuan','taichung','tainan','
 const sizeKeys   = new Set(['small','medium','large']);
 
 function applyFilters() {
+  const cards = Array.from(document.querySelectorAll('#dogGrid .dog-card'));
   let visible = 0;
   cards.forEach(c => {
     const ok = (activeStatus === 'all' || c.dataset.status === activeStatus)
