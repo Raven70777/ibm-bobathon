@@ -1081,56 +1081,101 @@ document.getElementById('clearSearchBtn').addEventListener('click', () => {
   document.getElementById('searchResultGrid').innerHTML = '';
 });
 
-// ── 以圖搜狗：顏色相似度比對引擎 ──
+// ── 以圖搜狗：Canvas 讀取上傳圖片色調 → 比對資料庫 ──
 
-// 把圖片畫到離屏 canvas，取得 16x16 縮圖的平均色
-function getImageColorVector(imgEl) {
-  return new Promise(resolve => {
-    const SIZE = 16;
-    const c = document.createElement('canvas');
-    c.width = c.height = SIZE;
-    const ctx = c.getContext('2d');
-    // crossOrigin 已在載入時設定；若圖片已 loaded 直接用
-    const draw = () => {
-      try {
-        ctx.drawImage(imgEl, 0, 0, SIZE, SIZE);
-        const data = ctx.getImageData(0, 0, SIZE, SIZE).data;
-        // 每 4 bytes = RGBA，取每個 pixel 的 RGB 平均
-        const vec = [];
-        for (let i = 0; i < data.length; i += 4) {
-          vec.push(data[i], data[i+1], data[i+2]);
-        }
-        resolve(vec);
-      } catch(e) {
-        resolve(null); // CORS 失敗時跳過
-      }
-    };
-    if (imgEl.complete && imgEl.naturalWidth > 0) { draw(); }
-    else { imgEl.onload = draw; imgEl.onerror = () => resolve(null); }
-  });
-}
-
-// 計算兩個向量的餘弦相似度（0~1，越高越像）
-function cosineSim(a, b) {
-  if (!a || !b || a.length !== b.length) return 0;
-  let dot = 0, magA = 0, magB = 0;
-  for (let i = 0; i < a.length; i++) {
-    dot  += a[i] * b[i];
-    magA += a[i] * a[i];
-    magB += b[i] * b[i];
-  }
-  return magA && magB ? dot / (Math.sqrt(magA) * Math.sqrt(magB)) : 0;
-}
-
-// 把上傳圖片的 data URL 轉成 Image 元素取色向量
-function getUploadVector(dataURL) {
+// 分析上傳圖（data URL）→ 取得平均 RGB
+function getUploadAvgColor(dataURL) {
   return new Promise(resolve => {
     const img = new Image();
-    img.onload = async () => { resolve(await getImageColorVector(img)); };
+    img.onload = () => {
+      const SIZE = 32;
+      const c = document.createElement('canvas');
+      c.width = c.height = SIZE;
+      const ctx = c.getContext('2d');
+      ctx.drawImage(img, 0, 0, SIZE, SIZE);
+      const d = ctx.getImageData(0, 0, SIZE, SIZE).data;
+      let r = 0, g = 0, b = 0, n = d.length / 4;
+      for (let i = 0; i < d.length; i += 4) { r += d[i]; g += d[i+1]; b += d[i+2]; }
+      resolve({ r: r/n, g: g/n, b: b/n });
+    };
     img.onerror = () => resolve(null);
     img.src = dataURL;
   });
 }
+
+// 依 RGB 判斷主色系（回傳標籤陣列）
+function detectColorTags({ r, g, b }) {
+  const tags = [];
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const brightness = (r + g + b) / 3;
+  const saturation = max > 0 ? (max - min) / max : 0;
+
+  if (brightness > 210)                         tags.push('白');
+  else if (brightness < 55)                     tags.push('黑');
+  else if (saturation < 0.12)                   tags.push('灰');
+  else if (r > g + 40 && r > b + 40)            tags.push('橘', '棕', '紅');
+  else if (r > 160 && g > 120 && b < 80)        tags.push('橘', '棕', '黃');
+  else if (g > r && g > b)                      tags.push('黃', '棕');
+  else if (b > r + 20 && b > g + 20)            tags.push('黑', '灰');
+  else                                           tags.push('棕', '黃', '橘');
+  return tags;
+}
+
+// 每隻狗的顏色關鍵字（對應 desc + breed）
+const DOG_COLOR_HINTS = {
+  1:  ['杏','棕','橘'], 2:  ['黑','棕'],       3:  ['白'],
+  4:  ['橘','紅','棕'], 5:  ['白','米'],        6:  ['棕','黑','三色'],
+  7:  ['橘','白'],      8:  ['棕','白'],        9:  ['黑','棕'],
+  10: ['黑','白','灰'], 11: ['棕','黃'],        12: ['白'],
+  13: ['白','橘','棕'], 14: ['黑','白'],        15: ['金','黃','橘'],
+  16: ['黑','白'],      17: ['黑','白'],        18: ['白'],
+  19: ['棕','白'],      20: ['棕'],             21: ['金','棕'],
+  22: ['棕','虎'],      23: ['棕','紅'],        24: ['白'],
+  25: ['灰','白'],      26: ['棕','黑'],        27: ['白'],
+  28: ['棕'],           29: ['黑','白'],        30: ['橘','紅'],
+  31: ['白','奶油'],    32: ['白','黑'],        33: ['棕','金'],
+  34: ['金','黃'],      35: ['棕','黃'],        36: ['杏','棕'],
+  37: ['黑','白'],      38: ['白','黑'],        39: ['橘','白'],
+  40: ['黑','棕'],      41: ['白'],             42: ['黑','棕'],
+  43: ['白','棕'],      44: ['白'],             45: ['白','黑'],
+  46: ['棕','白'],      47: ['棕','白'],        48: ['橘','棕'],
+  49: ['棕'],           50: ['棕','紅'],
+};
+
+// 計算比對分數（上傳色標 vs 狗狗色標 交集）
+function calcColorScore(uploadTags, dogId) {
+  const hints = DOG_COLOR_HINTS[dogId] || [];
+  let score = 0;
+  for (const ut of uploadTags) {
+    for (const h of hints) {
+      if (h.includes(ut) || ut.includes(h)) score++;
+    }
+  }
+  // 歸一化到 0~1
+  const maxPossible = Math.max(uploadTags.length, hints.length, 1);
+  return score / maxPossible;
+}
+
+// 全部靜態 50 筆資料
+const ALL_STATIC_DOGS = [
+  { id:1,  name:'豆豆',         breed:'貴賓犬（Toy Poodle）', phone:'0912-345-678', img:'https://placedog.net/400/300?id=1' },
+  { id:2,  name:'黑糖',         breed:'拉布拉多',             phone:'0933-567-890', img:'https://placedog.net/400/300?id=2' },
+  { id:3,  name:'白色小狗',     breed:'疑似馬爾濟斯',         phone:'0956-789-012', img:'https://placedog.net/400/300?id=3' },
+  { id:4,  name:'阿福',         breed:'柴犬',                 phone:'0977-234-567', img:'https://placedog.net/400/300?id=4' },
+  { id:5,  name:'奶茶',         breed:'博美犬',               phone:'0911-111-222', img:'https://placedog.net/400/300?id=5' },
+  { id:6,  name:'花生',         breed:'米格魯',               phone:'0988-456-789', img:'https://placedog.net/400/300?id=6' },
+  { id:7,  name:'橘子',         breed:'柯基犬',               phone:'0921-654-321', img:'https://placedog.net/400/300?id=7' },
+  { id:8,  name:'小米',         breed:'吉娃娃',               phone:'0956-112-233', img:'https://placedog.net/400/300?id=8' },
+  { id:9,  name:'大黑（待認領）',breed:'德國牧羊犬混種',      phone:'0978-888-999', img:'https://placedog.net/400/300?id=9' },
+  { id:10, name:'雪球',         breed:'哈士奇',               phone:'0922-333-444', img:'https://placedog.net/400/300?id=10' },
+  { id:11, name:'臘腸',         breed:'臘腸犬',               phone:'0966-777-888', img:'https://placedog.net/400/300?id=11' },
+  { id:12, name:'白雪',         breed:'薩摩耶',               phone:'0900-123-456', img:'https://placedog.net/400/300?id=12' },
+  { id:13, name:'將軍',         breed:'秋田犬',               phone:'0955-999-000', img:'https://placedog.net/400/300?id=13' },
+  { id:14, name:'長毛小狗（待認領）',breed:'疑似西施犬',     phone:'0933-246-810', img:'https://placedog.net/400/300?id=14' },
+  { id:15, name:'黃金',         breed:'黃金獵犬',             phone:'0944-567-890', img:'https://placedog.net/400/300?id=15' },
+  ...extraDogs.map(d => ({ id: d.id, name: d.name, breed: d.breed, phone: d.phone, img: `https://placedog.net/400/300?id=${d.id}` })),
+];
 
 // 開始比對
 document.getElementById('doSearchBtn').addEventListener('click', async () => {
@@ -1140,28 +1185,15 @@ document.getElementById('doSearchBtn').addEventListener('click', async () => {
   const countEl    = document.getElementById('searchResultCount');
   const doBtn      = document.getElementById('doSearchBtn');
 
-  // 靜態卡片資料（1–15 筆手寫 + 16–50 筆來自 extraDogs）
-  const hand15 = [
-    { name:'豆豆', breed:'貴賓犬（Toy Poodle）', phone:'0912-345-678', img:'https://placedog.net/400/300?id=1' },
-    { name:'黑糖', breed:'拉布拉多', phone:'0933-567-890', img:'https://placedog.net/400/300?id=2' },
-    { name:'白色小狗', breed:'疑似馬爾濟斯', phone:'0956-789-012', img:'https://placedog.net/400/300?id=3' },
-    { name:'阿福', breed:'柴犬', phone:'0977-234-567', img:'https://placedog.net/400/300?id=4' },
-    { name:'奶茶', breed:'博美犬', phone:'0911-111-222', img:'https://placedog.net/400/300?id=5' },
-    { name:'花生', breed:'米格魯', phone:'0988-456-789', img:'https://placedog.net/400/300?id=6' },
-    { name:'橘子', breed:'柯基犬', phone:'0921-654-321', img:'https://placedog.net/400/300?id=7' },
-    { name:'小米', breed:'吉娃娃', phone:'0956-112-233', img:'https://placedog.net/400/300?id=8' },
-    { name:'大黑（待認領）', breed:'德國牧羊犬混種', phone:'0978-888-999', img:'https://placedog.net/400/300?id=9' },
-    { name:'雪球', breed:'哈士奇', phone:'0922-333-444', img:'https://placedog.net/400/300?id=10' },
-    { name:'臘腸', breed:'臘腸犬', phone:'0966-777-888', img:'https://placedog.net/400/300?id=11' },
-    { name:'白雪', breed:'薩摩耶', phone:'0900-123-456', img:'https://placedog.net/400/300?id=12' },
-    { name:'將軍', breed:'秋田犬', phone:'0955-999-000', img:'https://placedog.net/400/300?id=13' },
-    { name:'長毛小狗（待認領）', breed:'疑似西施犬', phone:'0933-246-810', img:'https://placedog.net/400/300?id=14' },
-    { name:'黃金', breed:'黃金獵犬', phone:'0944-567-890', img:'https://placedog.net/400/300?id=15' },
-  ];
-  const extra50 = extraDogs.map(d => ({ name: d.name, breed: d.breed, phone: d.phone, img: `https://placedog.net/400/300?id=${d.id}` }));
-  const staticDogs = [...hand15, ...extra50];
+  const uploadedSrc = document.getElementById('searchPreviewImg').src;
+  doBtn.textContent = '🔄 比對中…';
+  doBtn.disabled = true;
 
-  // Firestore 動態案件（有 photo 的）
+  // 分析上傳圖片的色調
+  const avgColor = await getUploadAvgColor(uploadedSrc);
+  const uploadTags = avgColor ? detectColorTags(avgColor) : [];
+
+  // Firestore 動態案件
   const firestoreDogs = [];
   document.querySelectorAll('.dog-card.dynamic').forEach(card => {
     const imgEl = card.querySelector('img');
@@ -1169,36 +1201,21 @@ document.getElementById('doSearchBtn').addEventListener('click', async () => {
     const name  = card.querySelector('.dog-name')?.textContent || '未知';
     const breed = card.querySelector('.dog-breed')?.textContent || '';
     const phone = card.querySelector('.dog-contact')?.textContent.replace('📞 聯絡：','') || '';
-    firestoreDogs.push({ name, breed, phone, img: imgEl.src });
+    firestoreDogs.push({ id: null, name, breed, phone, img: imgEl.src });
   });
 
-  const allDogs = [...staticDogs, ...firestoreDogs];
-  if (allDogs.length === 0) {
-    noPhoto.style.display = 'block';
-    countEl.textContent = '';
-    resultArea.style.display = 'block';
-    return;
-  }
+  const allDogs = [...ALL_STATIC_DOGS, ...firestoreDogs];
 
-  // 取得上傳圖片的色向量
-  const uploadedSrc = document.getElementById('searchPreviewImg').src;
-  doBtn.textContent = '🔄 比對中…';
-  doBtn.disabled = true;
-
-  const uploadVec = await getUploadVector(uploadedSrc);
-
-  // 為每張資料庫圖片建立臨時 Image 物件取色向量
-  const scored = await Promise.all(allDogs.map(async (dog) => {
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.src = dog.img;
-    const vec = await getImageColorVector(img);
-    const sim = cosineSim(uploadVec, vec);
+  // 比對每隻狗，給分
+  const scored = allDogs.map(dog => {
+    const sim = dog.id ? calcColorScore(uploadTags, dog.id) : 0.3;
+    // Firestore 上傳的案件（有真實照片）加一點基礎分
     return { ...dog, sim };
-  }));
+  });
 
-  // 按相似度排序（高→低）
+  // 排序、只取前 5
   scored.sort((a, b) => b.sim - a.sim);
+  const top5 = scored.slice(0, 5);
 
   doBtn.textContent = '✅ 比對完成';
   doBtn.disabled = false;
@@ -1206,39 +1223,41 @@ document.getElementById('doSearchBtn').addEventListener('click', async () => {
 
   resultGrid.innerHTML = '';
   noPhoto.style.display = 'none';
-  countEl.textContent = `共比對 ${scored.length} 筆，依相似度排列`;
+  countEl.textContent = `🔍 從 ${allDogs.length} 筆中找出最相似的 ${top5.length} 筆`;
 
-  scored.forEach((dog, idx) => {
-    const pct = Math.round(dog.sim * 100);
+  // 計算最高分作為基準，顯示相對百分比
+  const maxSim = top5[0]?.sim || 1;
+
+  top5.forEach((dog, idx) => {
+    const pct = maxSim > 0 ? Math.round((dog.sim / maxSim) * 100) : 0;
     const isTop = idx === 0;
-    const isSimilar = pct >= 85; // 截圖比對幾乎一模一樣時得分很高
     const borderStyle = isTop
-      ? 'border:3px solid var(--primary);box-shadow:0 0 12px rgba(255,107,53,0.4);'
-      : isSimilar
+      ? 'border:3px solid var(--primary);box-shadow:0 0 16px rgba(255,107,53,0.45);'
+      : idx === 1
         ? 'border:2px solid var(--teal);'
-        : 'border:1px solid var(--hairline);';
-    const badge = isTop
-      ? `<div style="background:var(--primary);color:white;font-size:11px;font-weight:700;padding:3px 8px;border-radius:10px;display:inline-block;margin-bottom:4px;">🏆 最相似</div><br>`
-      : isSimilar
-        ? `<div style="background:var(--teal);color:white;font-size:11px;font-weight:700;padding:3px 8px;border-radius:10px;display:inline-block;margin-bottom:4px;">✅ 高度相似</div><br>`
-        : '';
+        : 'border:1.5px solid var(--hairline);';
+    const rankEmoji = ['🥇','🥈','🥉','4️⃣','5️⃣'][idx];
     const card = document.createElement('div');
-    card.style.cssText = `overflow:hidden;border-radius:8px;${borderStyle}`;
+    card.style.cssText = `overflow:hidden;border-radius:10px;${borderStyle}background:white;`;
     card.innerHTML = `
       <div style="position:relative;">
-        <img src="${dog.img}" style="width:100%;aspect-ratio:1;object-fit:cover;display:block;" alt="${dog.name}">
-        <div style="position:absolute;top:6px;right:6px;background:rgba(0,0,0,0.65);color:white;font-size:11px;font-weight:700;padding:2px 7px;border-radius:10px;">${pct}%</div>
+        <img src="${dog.img}" style="width:100%;aspect-ratio:4/3;object-fit:cover;display:block;" alt="${dog.name}">
+        <div style="position:absolute;top:8px;left:8px;background:rgba(0,0,0,0.72);color:white;font-size:13px;font-weight:700;padding:3px 9px;border-radius:12px;">${rankEmoji} ${pct}%</div>
+        ${isTop ? `<div style="position:absolute;bottom:8px;left:0;right:0;text-align:center;"><span style="background:var(--primary);color:white;font-size:11px;font-weight:700;padding:3px 12px;border-radius:12px;">🏆 最可能是牠！</span></div>` : ''}
       </div>
-      <div style="padding:8px 10px;">
-        ${badge}
-        <div style="font-size:14px;font-weight:700;color:var(--ink);margin-bottom:2px;">${dog.name}</div>
-        <div style="font-size:12px;color:var(--ink-subtle);margin-bottom:4px;">${dog.breed}</div>
-        <div style="font-size:12px;color:var(--primary);">📞 ${dog.phone}</div>
+      <div style="padding:10px 12px;">
+        <div style="font-size:15px;font-weight:800;color:var(--ink);margin-bottom:2px;">${dog.name}</div>
+        <div style="font-size:12px;color:var(--ink-subtle);margin-bottom:6px;">${dog.breed}</div>
+        <div style="font-size:13px;color:var(--primary);font-weight:700;">📞 ${dog.phone}</div>
       </div>`;
     resultGrid.appendChild(card);
   });
 
+  // 修改 grid 為 5 欄
+  resultGrid.style.gridTemplateColumns = 'repeat(5,1fr)';
   resultArea.style.display = 'block';
+  // 捲動到結果
+  resultArea.scrollIntoView({ behavior: 'smooth', block: 'start' });
 });
 
 // Submit → 存到 Firestore
